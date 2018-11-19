@@ -1,0 +1,19 @@
+{
+    "name": "andres3210/laraews",
+    "description": "Unified API to EWS",
+    "type": "library",
+    "license": "Open source GPL",
+    "authors": [
+        {
+            "name": "andres3210",
+            "email": "andres3210@gmail.com"
+        }
+    ],
+    "require": {},
+    "minimum-stability": "dev",
+    "autoload": {
+      "psr-4": {
+        "andres3210\\laraews\\": "src/"
+      }
+    }
+}
