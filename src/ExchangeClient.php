@@ -3,30 +3,27 @@
 namespace andres3210\laraews;
 
 use andres3210\laraews\models\ExchangeSubscription;
+use Mockery\CountValidator\Exception;
+
 
 use \jamesiarmes\PhpEws\Client;
 
-use jamesiarmes\PhpEws\Enumeration\DisposalType;
-use jamesiarmes\PhpEws\Request\DeleteItemType;
+use \jamesiarmes\PhpEws\Request\DeleteItemType;
 use \jamesiarmes\PhpEws\Request\FindFolderType;
-use \jamesiarmes\PhpEws\Request\FindItemType;
-use \jamesiarmes\PhpEws\Request\GetInboxRulesRequestType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
+use \jamesiarmes\PhpEws\Request\MoveItemType;
 use \jamesiarmes\PhpEws\Request\SubscribeType;
 
-use \jamesiarmes\PhpEws\Enumeration\MapiPropertyTypeType;
+use \jamesiarmes\PhpEws\Enumeration\DisposalType;
 use \jamesiarmes\PhpEws\Enumeration\DefaultShapeNamesType;
 use \jamesiarmes\PhpEws\Enumeration\DistinguishedFolderIdNameType;
 use \jamesiarmes\PhpEws\Enumeration\ResponseClassType;
 use \jamesiarmes\PhpEws\Enumeration\UnindexedFieldURIType;
-use \jamesiarmes\PhpEws\Enumeration\ContainmentComparisonType;
-use \jamesiarmes\PhpEws\Enumeration\ContainmentModeType;
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
 
 use \jamesiarmes\PhpEws\Type\AndType;
 use \jamesiarmes\PhpEws\Type\ConnectingSIDType;
 use \jamesiarmes\PhpEws\Type\ConstantValueType;
-use \jamesiarmes\PhpEws\Type\ContainsExpressionType;
 use \jamesiarmes\PhpEws\Type\DistinguishedFolderIdType;
 use \jamesiarmes\PhpEws\Type\ExchangeImpersonationType;
 use \jamesiarmes\PhpEws\Type\FieldURIOrConstantType;
@@ -35,20 +32,15 @@ use \jamesiarmes\PhpEws\Type\IsGreaterThanOrEqualToType;
 use \jamesiarmes\PhpEws\Type\IsLessThanOrEqualToType;
 use \jamesiarmes\PhpEws\Type\ItemIdType;
 use \jamesiarmes\PhpEws\Type\ItemResponseShapeType;
-use \jamesiarmes\PhpEws\Type\PathToExtendedFieldType;
 use \jamesiarmes\PhpEws\Type\PathToUnindexedFieldType;
 use \jamesiarmes\PhpEws\Type\PushSubscriptionRequestType;
 use \jamesiarmes\PhpEws\Type\RestrictionType;
 use \jamesiarmes\PhpEws\Type\FolderIdType;
-use jamesiarmes\PhpEws\Type\SendNotificationResultType;
-use \jamesiarmes\PhpEws\Type\StreamingSubscriptionRequest;
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfNotificationEventTypesType;
-use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfPathsToElementType;
-use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfSubscriptionIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
-use Mockery\CountValidator\Exception;
+
 
 class ExchangeClient extends Client {
 
@@ -84,14 +76,25 @@ class ExchangeClient extends Client {
     public function __construct($server = null, $username = null, $password = null, $version = null)
     {
         // Set the object properties.
+        $this->setCurlOptions([
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
         $this->setServer($server        ? $server   : env('EXCHANGE_HOST'));
         $this->setUsername($username    ? $username : env('EXCHANGE_USER'));
         $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD'));
         $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION', self::VERSION_2013));
 
+
+
         $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL', false);
         if( $impersonateEmail )
             $this->setImpersonationByEmail($impersonateEmail);
+    }
+
+    public function getUsername()
+    {
+        return $this->username;
     }
 
 
@@ -192,6 +195,13 @@ class ExchangeClient extends Client {
                 }
         }
 
+        // Limits the number of items retrieved
+        /*$request->IndexedPageItemView = new IndexedPageViewType();
+        $request->IndexedPageItemView->BasePoint = "Beginning";
+        $request->IndexedPageItemView->Offset = 0;
+        $request->IndexedPageItemView->MaxEntriesReturnedSpecified = true;
+        $request->IndexedPageItemView->MaxEntriesReturned = 300; //Can not go over 1000 */
+
         // Send Request
         $response = $this->FindItem($request);
 
@@ -210,13 +220,16 @@ class ExchangeClient extends Client {
             // Iterate over the messages that were found, printing the subject for each.
             $items = $response_message->RootFolder->Items->Message;
             $emails = [];
-            foreach ($items as $item)
+            foreach ($items as $item) {
+                //print_r($item); exit();
                 $emails[] = (object)[
                     'Subject' => $item->Subject,
                     'ItemId' => $item->ItemId->Id,
+                    'From' => (isset($item->From) && isset($item->From->Mailbox) ) ? $item->From->Mailbox->Name : '',
                     'DisplayTo' => $item->DisplayTo,
                     'DateTimeReceived' => $item->DateTimeReceived
                 ];
+            }
 
             return $emails;
         }
@@ -309,6 +322,37 @@ class ExchangeClient extends Client {
     }
 
 
+    public function moveEmailItem($id, $folderId)
+    {
+        $request = new MoveItemType();
+
+        $request->ToFolderId = new NonEmptyArrayOfBaseFolderIdsType();
+        $request->ToFolderId->FolderId = new FolderIdType();
+        $request->ToFolderId->FolderId->Id = $folderId;
+
+        $request->ItemIds = new NonEmptyArrayOfBaseItemIdsType();
+        $request->ItemIds->ItemId = new ItemIdType();
+        $request->ItemIds->ItemId->Id = $id;
+
+
+        // Generic execution sample code
+        $response = $this->MoveItem($request);
+
+        if( isset($response->ResponseMessages) && isset($response->ResponseMessages->MoveItemResponseMessage) && isset($response->ResponseMessages->MoveItemResponseMessage[0]) ){
+            $node = $response->ResponseMessages->MoveItemResponseMessage[0];
+
+            if( isset($node->ResponseClass) && $node->ResponseClass == ResponseClassType::SUCCESS
+                && isset($node->Items) && isset($node->Items->Message) && isset($node->Items->Message[0]) )
+                return $node->Items->Message[0]->ItemId;
+
+            //print_r($node); exit();
+            throw(new Exception('Exchange EWS Move Item Error >> ' . $node->ResponseCode . ': '. $node->MessageText));
+        }
+
+        return false;
+    }
+
+
     public function deleteEmailItem($id)
     {
         $request = new DeleteItemType();
@@ -338,6 +382,85 @@ class ExchangeClient extends Client {
     }
 
 
+    public function listFolders($search = null){
+
+        // Build the request.
+        $request = new FindFolderType();
+        $request->FolderShape = new FolderResponseShapeType();
+        $request->FolderShape->BaseShape = DefaultShapeNamesType::ALL_PROPERTIES;
+        $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
+        //$request->Restriction = new RestrictionType();
+
+        // Search recursively.
+        $request->Traversal = FolderQueryTraversalType::DEEP;
+
+        // Search within the root folder. Combined with the traversal set above, this
+        // should search through all folders in the user's mailbox.
+        $parent = new DistinguishedFolderIdType();
+        $parent->Id = DistinguishedFolderIdNameType::ROOT;
+        $request->ParentFolderIds->DistinguishedFolderId[] = $parent;
+
+        /*if( $search != null ){
+            // Build the restriction that will search for folders containing "Cal".
+            $contains = new ContainsExpressionType();
+            $contains->FieldURI = new PathToUnindexedFieldType();
+            $contains->FieldURI->FieldURI = UnindexedFieldURIType::FOLDER_DISPLAY_NAME;
+            $contains->Constant = new ConstantValueType();
+            $contains->Constant->Value = $search;
+            $contains->ContainmentComparison = ContainmentComparisonType::EXACT;
+            $contains->ContainmentMode = ContainmentModeType::SUBSTRING;
+            $request->Restriction->Contains = $contains;
+        }*/
+
+        $response = $this->FindFolder($request);
+
+        // Iterate over the results, printing any error messages or folder names and ids.
+        $response_messages = $response->ResponseMessages->FindFolderResponseMessage;
+
+
+
+        $folderStructure = [];
+        $allFoldersArr = [];
+        foreach ($response_messages as $response_message) {
+            // Make sure the request succeeded.
+            if ($response_message->ResponseClass != ResponseClassType::SUCCESS) {
+                $code = $response_message->ResponseCode;
+                $message = $response_message->MessageText;
+                return false;
+            }
+
+            // The folders could be of any type, so combine all of them into a single
+            // array to iterate over them.
+            $folders = array_merge(
+                $response_message->RootFolder->Folders->CalendarFolder,
+                $response_message->RootFolder->Folders->ContactsFolder,
+                $response_message->RootFolder->Folders->Folder,
+                $response_message->RootFolder->Folders->SearchFolder,
+                $response_message->RootFolder->Folders->TasksFolder
+            );
+
+            // Iterate over the found folders.
+            $inboxId = null;
+            foreach ($folders as $folder) {
+                $tmp = (object)[
+                    'id' => $folder->FolderId->Id,
+                    'name' => $folder->DisplayName,
+                    'ParentFolderId' => $folder->ParentFolderId != null ? $folder->ParentFolderId->Id : null
+                ];
+
+                if( in_array($folder->DisplayName, array_keys($this->distinguishedFolders)) ){
+                    $folderStructure[] = $tmp;
+                    $this->distinguishedFolders[$folder->DisplayName] = $folder->FolderId->Id;
+                }
+
+                $allFoldersArr[] = $tmp;
+            }
+        }
+
+        return $allFoldersArr;
+    }
+
+
     public function subscribePushNotifications($callbackUri, $callback)
     {
         $request = new SubscribeType();
@@ -345,12 +468,12 @@ class ExchangeClient extends Client {
         $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
         $eventTypes->EventType = [
             'CreatedEvent',
-            'DeletedEvent',
-            'ModifiedEvent',
+            //'DeletedEvent',
+            //'ModifiedEvent',
             'NewMailEvent',
             'MovedEvent',
             'CopiedEvent',
-            'FreeBusyChangedEvent'
+            //'FreeBusyChangedEvent'
         ];
 
         // Get Main Folder ID
