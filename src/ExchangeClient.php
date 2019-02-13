@@ -346,7 +346,9 @@ class ExchangeClient extends Client {
                     return $node->Items->Message[0]->ItemId;
 
                 // Lost item id (know bug while moving between mailboxes)
-                return '';
+                return (object)[
+                    'Id' => ''
+                ];
             }
 
             //print_r($response);
