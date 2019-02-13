@@ -345,7 +345,7 @@ class ExchangeClient extends Client {
                 && isset($node->Items) && isset($node->Items->Message) && isset($node->Items->Message[0]) )
                 return $node->Items->Message[0]->ItemId;
 
-            //print_r($response); exit();
+            print_r($response);
             throw(new Exception('Exchange EWS Move Item Error >> ' . $node->ResponseCode . ': '. $node->MessageText));
         }
 
