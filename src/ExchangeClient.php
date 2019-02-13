@@ -341,11 +341,15 @@ class ExchangeClient extends Client {
         if( isset($response->ResponseMessages) && isset($response->ResponseMessages->MoveItemResponseMessage) && isset($response->ResponseMessages->MoveItemResponseMessage[0]) ){
             $node = $response->ResponseMessages->MoveItemResponseMessage[0];
 
-            if( isset($node->ResponseClass) && $node->ResponseClass == ResponseClassType::SUCCESS
-                && isset($node->Items) && isset($node->Items->Message) && isset($node->Items->Message[0]) )
-                return $node->Items->Message[0]->ItemId;
+            if( isset($node->ResponseClass) && $node->ResponseClass == ResponseClassType::SUCCESS ){
+                if( isset($node->Items) && isset($node->Items->Message) && isset($node->Items->Message[0]) )
+                    return $node->Items->Message[0]->ItemId;
 
-            print_r($response);
+                // Lost item id (know bug while moving between mailboxes)
+                return '';
+            }
+
+            //print_r($response);
             throw(new Exception('Exchange EWS Move Item Error >> ' . $node->ResponseCode . ': '. $node->MessageText));
         }
 
