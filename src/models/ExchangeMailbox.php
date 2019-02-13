@@ -16,6 +16,9 @@ class ExchangeMailbox extends Model
     {
         $exchange = new ExchangeClient();
 
+        if($this->email != env('EXCHANGE_EMAIL'))
+            $exchange->setImpersonationByEmail($this->email);
+
         $folders = $exchange->listFolders();
 
         foreach( $folders AS $folder )

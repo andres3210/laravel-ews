@@ -38,6 +38,7 @@ class ExchangeItem extends Model
             return false;
 
         $exchange = new ExchangeClient();
+
         try{
             echo 'attempt move';
             $moveResult = $exchange->moveEmailItem($this->item_id, $folder->item_id);
@@ -49,10 +50,9 @@ class ExchangeItem extends Model
             }
         }catch( Exception $e ){
             echo ' - move error -';
-            $this->delete();
+            //$this->delete();
             exit();
         }
-
 
         return false;
     }
