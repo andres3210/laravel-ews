@@ -50,6 +50,7 @@ class ExchangeItem extends Model
             }
         }catch( Exception $e ){
             echo ' - move error -';
+            print_r( $e->getMessage() );
             //$this->delete();
             exit();
         }
