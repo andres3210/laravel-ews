@@ -12,7 +12,7 @@ class ExchangeItem extends Model
 {
 
     protected $fillable = [
-        'item_id', 'exchange_mailbox_id', 'exchange_folder_id',
+        'item_id', 'exchange_mailbox_id', 'exchange_folder_id', 'message_id',
         'subject', 'from', 'to', 'cc', 'bcc', 'body', 'attachment', 'created_at'
     ];
 
@@ -29,6 +29,19 @@ class ExchangeItem extends Model
     public function setBodyAttribute($value)
     {
         $this->attributes['body'] = gzencode($value);
+    }
+
+    public function save(array $options = [])
+    {
+        $this->hash = sha1(
+            $this->message_id . ':' .
+            $this->created_at . ':' .
+            $this->from . ':' .
+            $this->to . ':' .
+            $this->subject
+        );
+
+        parent::save();
     }
 
     public function moveToFolder($id)

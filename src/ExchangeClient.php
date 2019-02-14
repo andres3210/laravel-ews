@@ -285,6 +285,16 @@ class ExchangeClient extends Client {
 
                 //print_r($email); exit();
 
+                $headers = [];
+                if( isset($email->InternetMessageHeaders) && isset($email->InternetMessageHeaders->InternetMessageHeader) ){
+                    foreach($email->InternetMessageHeaders->InternetMessageHeader AS $header){
+                        if( !isset($headers[$header->HeaderName]) ) $headers[$header->HeaderName] = [];
+
+                        // Add grouped header
+                        $headers[$header->HeaderName][] = $header->_;
+                    }
+                }
+
                 $emailObj = (object)[
                     'ItemId' => isset($email->ItemId->Id) ? $email->ItemId->Id : null,
                     'Subject' => isset($email->Subject) ? $email->Subject : null,
@@ -296,7 +306,9 @@ class ExchangeClient extends Client {
                     'DateTimeSent'    => isset($email->DateTimeSent) ? $email->DateTimeSent : null,
                     'Body' => $email->Body->_,
                     'ConversationId' => $email->ConversationId->Id, // ALL_PROPERTIES
+                    'InternetMessageId' => $email->InternetMessageId,
                     'ParentFolderId' => $email->ParentFolderId->Id, // ALL_PROPERTIES
+                    'Headers' => $headers
                 ];
 
                 if( isset($email->ToRecipients) && isset($email->ToRecipients->Mailbox) )
