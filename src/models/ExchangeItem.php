@@ -33,15 +33,17 @@ class ExchangeItem extends Model
 
     public function save(array $options = [])
     {
-        $this->hash = sha1(
+        $this->hash = $this->getHash();
+        parent::save();
+    }
+
+    public function getHash(){
+        return sha1(
             $this->message_id . ':' .
-            $this->created_at . ':' .
             $this->from . ':' .
             $this->to . ':' .
             $this->subject
         );
-
-        parent::save();
     }
 
     public function moveToFolder($id)

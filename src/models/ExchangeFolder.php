@@ -59,7 +59,7 @@ class ExchangeFolder extends Model
                 $bufferIds = [];
 
                 foreach($emails AS $email){
-                    $inserted = ExchangeItem::create([
+                    $newExchangeItem = new ExchangeItem([
                         'item_id'               => $email->ItemId,
                         'exchange_folder_id'    => $this->id,
                         'exchange_mailbox_id'   => $this->exchange_mailbox_id,
@@ -73,11 +73,23 @@ class ExchangeFolder extends Model
                         'body'          => $email->Body,
                     ]);
 
-                    if($inserted){
-                        echo 'Inserted '.$inserted->id . PHP_EOL;
-                        $inserted++;
-                    }
+                    $existingHash = ExchangeItem::where('hash', '=', $newExchangeItem->getHash())->first();
 
+                    if( !$existingHash ){
+                        $inserted = $newExchangeItem->save();
+
+                        if($inserted){
+                            echo 'Inserted '.$inserted->id . PHP_EOL;
+                            $inserted++;
+                        }
+                    }
+                    else{
+                        // Attach new ItemID and location
+                        $existingHash->item_id              = $email->ItemId;
+                        $existingHash->exchange_folder_id   = $this->id;
+                        $existingHash->exchange_mailbox_id  = $this->exchange_mailbox_id;
+                        $existingHash->save();
+                    }
                 }
             }
         }
