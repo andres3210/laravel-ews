@@ -14,7 +14,11 @@ class ExchangeMailbox extends Model
 
     public function syncFolderStructure()
     {
-        $exchange = new ExchangeClient();
+        $env = 'dev';
+        if( strpos($this->email, 'canadavisa.com') !== false)
+            $env = 'prod';
+
+        $exchange = new ExchangeClient(null, null, null, null, $env);
 
         if($this->email != env('EXCHANGE_EMAIL'))
             $exchange->setImpersonationByEmail($this->email);

@@ -4,21 +4,66 @@ namespace andres3210\laraews\models;
 
 use Illuminate\Database\Eloquent\Model;
 use andres3210\laraews\ExchangeClient;
+use andres3210\laraews\models\ExchangeMailbox;
 use andres3210\laraews\models\ExchangeItem;
 
 class ExchangeFolder extends Model
 {
 
+    const MODE_PROGRESSIVE = 'PROGRESSIVE';
+    const STATUS_PARTIAL_SYNC = 'PARTIAL_SYNC';
+
+
     protected $fillable = ['exchange_mailbox_id', 'item_id', 'parent_id', 'name'];
 
-    public function syncExchange( $mode = 'last' ){
 
-        $exchange = new ExchangeClient();
+    /**
+     * progressive mode
+     *  scans full folder starting from now till the beginning
+     *
+     * last mode
+     *  scans last month of email items
+     */
+    public function syncExchange( $mode = 'last', $params = null ){
+
+        $mailbox = ExchangeMailbox::findOrFail($this->exchange_mailbox_id);
+
+        $env = 'dev';
+        if( strpos($mailbox->email, 'canadavisa.com') !== false)
+            $env = 'prod';
+
+        $exchange = new ExchangeClient(null, null, null, null, $env);
+
+        if($mailbox->email != env('EXCHANGE_EMAIL'))
+            $exchange->setImpersonationByEmail($mailbox->email);
 
         $search = [];
-
         switch($mode){
-            case 'all':
+            case SELF::MODE_PROGRESSIVE:
+
+                // Lock cron
+                //if($this->status == 'sync-in-progress' )
+                //    return;
+
+                $this->status = 'sync-in-progress';
+                if( !isset($this->status_data) || $this->status_data == '' || true ){
+                    $status_data = (object)([
+                        'syncMode'   => $mode,
+                        'needleDate' => new \DateTime('now')
+                    ]);
+                    $this->status_data = json_encode($status_data);
+                }
+                else{
+                    $status_data = json_decode($this->status_data);
+                    $status_data->needleDate = new \DateTime($status_data->needleDate->date);
+                }
+                $this->save();
+
+                $endDate = new \DateTime($status_data->needleDate->format('Y-m-d H:i:s'));
+                $endDate->modify('-90 days');
+
+                $search['dateFrom'] = $endDate;
+                $search['dateTo']   = $status_data->needleDate;
                 break;
 
             case 'last':
@@ -40,17 +85,41 @@ class ExchangeFolder extends Model
                 break;
         }
 
+        if( $params != null ){
+            if( isset($params['dateFromLimit']) )
+                $search['dateFrom'] = $search['dateFrom'] < $params['dateFromLimit'] ? $params['dateFromLimit'] : $search['dateFrom'];
+        }
+
         $items = $exchange->getFolderItems($this->item_id, $search);
 
-        $inserted = 0;
+        $results = [
+            'downloaded'    => 0,
+            'inserted'      => 0,
+            'existing'      => 0,
+            're-linked'     => 0,
+            'oldest'        => \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $status_data->needleDate->format('Y-m-d H:i:s'))
+        ];
+
+        if( count($items) == 0 && isset($search['dateFrom']) ){
+            $results['oldest'] = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $search['dateFrom']->format('Y-m-d H:i:s'));
+        }
+
+
         $bufferIds = [];
         $limit = 30;
         foreach($items AS $key => $item){
+            $results['downloaded']++;
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
             if( !$existing )
                 $bufferIds[] = $item->ItemId;
+            else{
+                $results['existing']++;
+                if($results['oldest'] > $existing->created_at)
+                    $results['oldest'] = $existing->created_at;
+            }
+
 
             if( (count($bufferIds) >= $limit || !next($items)) && count($bufferIds) > 0 ){
                 $emails = $exchange->getEmailItem($bufferIds);
@@ -59,6 +128,11 @@ class ExchangeFolder extends Model
                 $bufferIds = [];
 
                 foreach($emails AS $email){
+
+                    $itemDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $email->DateTimeCreated);
+                    if($results['oldest'] > $itemDate)
+                        $results['oldest'] = $itemDate;
+
                     $newExchangeItem = new ExchangeItem([
                         'item_id'               => $email->ItemId,
                         'exchange_folder_id'    => $this->id,
@@ -69,19 +143,15 @@ class ExchangeFolder extends Model
                         'to'            => implode(',', $email->To),
                         'cc'            => implode(',', $email->Cc),
                         'bcc'           => implode(',', $email->Bcc),
-                        'created_at'    => \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $email->DateTimeCreated),
+                        'created_at'    => $itemDate,
                         'body'          => $email->Body,
                     ]);
 
                     $existingHash = ExchangeItem::where('hash', '=', $newExchangeItem->getHash())->first();
 
                     if( !$existingHash ){
-                        $inserted = $newExchangeItem->save();
-
-                        if($inserted){
-                            echo 'Inserted '.$inserted->id . PHP_EOL;
-                            $inserted++;
-                        }
+                        $newExchangeItem->save();
+                        $results['inserted']++;
                     }
                     else{
                         // Attach new ItemID and location
@@ -89,12 +159,20 @@ class ExchangeFolder extends Model
                         $existingHash->exchange_folder_id   = $this->id;
                         $existingHash->exchange_mailbox_id  = $this->exchange_mailbox_id;
                         $existingHash->save();
+                        $results['re-linked']++;
                     }
                 }
             }
         }
 
-        return ['inserted' => $inserted];
+        if( $mode == self::MODE_PROGRESSIVE ){
+            $status_data->needleDate = new \DateTime( $results['oldest']->format('Y-m-d H:i:s'));
+            $this->status_data = json_encode($status_data);
+            $this->status = self::STATUS_PARTIAL_SYNC;
+            $this->save();
+        }
+
+        return $results;
     }
 
 }

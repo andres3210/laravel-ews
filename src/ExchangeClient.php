@@ -72,24 +72,37 @@ class ExchangeClient extends Client {
         'Top of Information Store'  => null
     ];
 
+    private $impersonationEmail = '';
 
-    public function __construct($server = null, $username = null, $password = null, $version = null)
+
+    public function __construct($server = null, $username = null, $password = null, $version = null, $env = null)
     {
         // Set the object properties.
         $this->setCurlOptions([
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false
         ]);
-        $this->setServer($server        ? $server   : env('EXCHANGE_HOST'));
-        $this->setUsername($username    ? $username : env('EXCHANGE_USER'));
-        $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD'));
-        $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION', self::VERSION_2013));
 
-
-
-        $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL', false);
-        if( $impersonateEmail )
-            $this->setImpersonationByEmail($impersonateEmail);
+        if( $env == 'prod')
+        {
+            $this->setServer($server        ? $server   : env('EXCHANGE_HOST_PROD'));
+            $this->setUsername($username    ? $username : env('EXCHANGE_USER_PROD'));
+            $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD_PROD'));
+            $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION_PROD', self::VERSION_2013));
+            $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL_PROD', false);
+            if( $impersonateEmail )
+                $this->setImpersonationByEmail($impersonateEmail);
+        }
+        else
+        {
+            $this->setServer($server        ? $server   : env('EXCHANGE_HOST'));
+            $this->setUsername($username    ? $username : env('EXCHANGE_USER'));
+            $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD'));
+            $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION', self::VERSION_2013));
+            $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL', false);
+            if( $impersonateEmail )
+                $this->setImpersonationByEmail($impersonateEmail);
+        }
     }
 
     public function getUsername()
@@ -100,11 +113,17 @@ class ExchangeClient extends Client {
 
     public function setImpersonationByEmail($email)
     {
+        if($email == $this->impersonationEmail)
+            return;
+
+        echo 'set impersonate '.$email.PHP_EOL;
         $ei = new ExchangeImpersonationType();
         $sid = new ConnectingSIDType();
         $sid->PrimarySmtpAddress = $email;
         $ei->ConnectingSID = $sid;
         $this->setImpersonation($ei);
+
+        $this->impersonationEmail = $email;
     }
 
 
@@ -213,8 +232,11 @@ class ExchangeClient extends Client {
 
         foreach ($response_messages as $response_message) {
             // Make sure the request succeeded.
-            if ($response_message->ResponseClass != ResponseClassType::SUCCESS)
+            if ($response_message->ResponseClass != ResponseClassType::SUCCESS){
+                //print_r($response_message);
                 throw( new Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
+            }
+
 
 
             // Iterate over the messages that were found, printing the subject for each.
