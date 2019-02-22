@@ -119,6 +119,10 @@ class ExchangeFolder extends Model
             if( !$existing )
                 $bufferIds[] = $item->ItemId;
             else{
+                // Do not trust MySQL short indexes
+                if( $item->ItemId == $existing->item_id)
+                    echo 'DUPLICATE ITEM ID (FULL-MATCH)' . PHP_EOL;
+
                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
 
