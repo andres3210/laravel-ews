@@ -170,7 +170,10 @@ class ExchangeFolder extends Model
                         'body'          => $email->Body,
                     ]);
 
-                    $existingHash = ExchangeItem::where('hash', '=', $newExchangeItem->getHash())->first();
+                    // Only re-link items with empty ItemId
+                    $existingHash = ExchangeItem::where('item_id', '=', '')
+                        ->where('hash', '=', $newExchangeItem->getHash())
+                        ->first();
 
                     if( !$existingHash ){
                         $newExchangeItem->save();
