@@ -65,7 +65,7 @@ class ExchangeFolder extends Model
 
                 $search['dateFrom'] = $endDate;
                 $search['dateTo']   = $status_data->needleDate;
-                $search['limit']    = 1000;
+                $search['limit']    = 100;
                 break;
 
             case 'last':
