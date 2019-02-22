@@ -138,7 +138,7 @@ class ExchangeFolder extends Model
                         'exchange_folder_id'    => $this->id,
                         'exchange_mailbox_id'   => $this->exchange_mailbox_id,
                         'message_id'    => $email->InternetMessageId,
-                        'subject'       => $email->Subject,
+                        'subject'       => isset($email->Subject) ? $email->Subject : '',
                         'from'          => isset($email->From) ? $email->From : 'no-email',
                         'to'            => implode(',', $email->To),
                         'cc'            => implode(',', $email->Cc),
