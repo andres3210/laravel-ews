@@ -129,11 +129,11 @@ class ExchangeFolder extends Model
                 $bufferIds[] = $item->ItemId;
             else
             {
-                if($item->ItemId !== $item_id)
+                if($item->ItemId === $item_id)
                     echo 'DUPLICATE ITEM ID (FULL-ID-MATCH)' . PHP_EOL;
 
-                if($folder_id == $this->id);
-                echo 'DUPLICATE ITEM ID (FULL-ID-MATCH) (SAME FOLDER ID)' . PHP_EOL;
+                if($folder_id === $this->id);
+                    echo 'DUPLICATE ITEM ID (FULL-ID-MATCH) (SAME FOLDER ID)' . PHP_EOL;
 
                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
