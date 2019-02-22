@@ -46,7 +46,7 @@ class ExchangeFolder extends Model
                 //    return;
 
                 $this->status = 'sync-in-progress';
-                if( !isset($this->status_data) || $this->status_data == '' || true ){
+                if( !isset($this->status_data) || $this->status_data == '' ){
                     $status_data = (object)([
                         'syncMode'   => $mode,
                         'needleDate' => new \DateTime('now')
