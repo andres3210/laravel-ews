@@ -119,6 +119,9 @@ class ExchangeFolder extends Model
             if( !$existing )
                 $bufferIds[] = $item->ItemId;
             else{
+                echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
+                    $existing->subject .'('.$existing->from.')'. PHP_EOL;
+
                 $results['existing']++;
                 if($results['oldest'] > $existing->created_at)
                     $results['oldest'] = $existing->created_at;
