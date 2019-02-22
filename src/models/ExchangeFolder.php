@@ -95,6 +95,7 @@ class ExchangeFolder extends Model
         $items = $exchange->getFolderItems($this->item_id, $search);
 
         $results = [
+            'listed'        => 0,
             'downloaded'    => 0,
             'inserted'      => 0,
             'existing'      => 0,
@@ -110,7 +111,7 @@ class ExchangeFolder extends Model
         $bufferIds = [];
         $limit = 30;
         foreach($items AS $key => $item){
-            $results['downloaded']++;
+            $results['listed']++;
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
@@ -128,13 +129,6 @@ class ExchangeFolder extends Model
             else
             {
                 echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
-
-                /*if($item->ItemId == $item_id)
-                    echo 'DUPLICATE ITEM ID (FULL-ID-MATCH)' . PHP_EOL;
-
-                if($folder_id == $this->id);
-                    echo 'DUPLICATE ITEM ID (SAME FOLDER ID)' . PHP_EOL;*/
-
                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
 
@@ -151,6 +145,7 @@ class ExchangeFolder extends Model
                 $bufferIds = [];
 
                 foreach($emails AS $email){
+                    $results['downloaded']++;
 
                     $itemDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $email->DateTimeCreated);
                     if($results['oldest'] > $itemDate)
