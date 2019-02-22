@@ -65,7 +65,7 @@ class ExchangeFolder extends Model
 
                 $search['dateFrom'] = $endDate;
                 $search['dateTo']   = $status_data->needleDate;
-                $search['limit']    = 100;
+                $search['limit']    = 1000;
                 break;
 
             case 'last':
@@ -129,11 +129,11 @@ class ExchangeFolder extends Model
             {
                 echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
 
-                if($item->ItemId == $item_id)
+                /*if($item->ItemId == $item_id)
                     echo 'DUPLICATE ITEM ID (FULL-ID-MATCH)' . PHP_EOL;
 
                 if($folder_id == $this->id);
-                    echo 'DUPLICATE ITEM ID (SAME FOLDER ID)' . PHP_EOL;
+                    echo 'DUPLICATE ITEM ID (SAME FOLDER ID)' . PHP_EOL;*/
 
                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
