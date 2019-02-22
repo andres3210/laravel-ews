@@ -125,7 +125,7 @@ class ExchangeFolder extends Model
             $folder_id = $existing ? $existing->exchange_folder_id : '';
 
 
-            if( !$existing && $item->ItemId !== $item_id && $folder_id !== $this->id )
+            if( !$existing && $item->ItemId != $item_id && $folder_id != $this->id )
                 $bufferIds[] = $item->ItemId;
             else
             {
