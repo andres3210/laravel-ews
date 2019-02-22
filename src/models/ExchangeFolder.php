@@ -62,7 +62,7 @@ class ExchangeFolder extends Model
 
 
                 $endDate = new \DateTime($status_data->needleDate->format('Y-m-d H:i:s'));
-                $endDate->modify('-10 days');
+                $endDate->modify('-60 days');
 
 
                 $search['dateFrom'] = $endDate;
