@@ -42,8 +42,8 @@ class ExchangeFolder extends Model
             case SELF::MODE_PROGRESSIVE:
 
                 // Lock cron
-                //if($this->status == 'sync-in-progress' )
-                //    return;
+                if($this->status == 'sync-in-progress' )
+                    return;
 
                 $this->status = 'sync-in-progress';
                 if( !isset($this->status_data) || $this->status_data == '' ){
@@ -56,8 +56,10 @@ class ExchangeFolder extends Model
                 else{
                     $status_data = json_decode($this->status_data);
                     $status_data->needleDate = new \DateTime($status_data->needleDate->date);
+                    $status_data->needleDate->modify('-1 Second');
                 }
                 $this->save();
+
 
                 $endDate = new \DateTime($status_data->needleDate->format('Y-m-d H:i:s'));
                 $endDate->modify('-10 days');
