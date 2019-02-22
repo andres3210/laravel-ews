@@ -116,12 +116,21 @@ class ExchangeFolder extends Model
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
-            if( !$existing )
+            // MySQL Indexes do not support the length of EWS Item Ids.
+            // Id need to be re-verified to avoid false positive due to incomplete index
+            $item_id = $existing ? $existing->item_id : '';
+
+            // Exchange is capable to have 1 Item in multiple folders in the same mailbox
+            // We need to have a copy for the internal db
+            $folder_id = $existing ? $existing->exchange_folder_id : '';
+
+
+            if( !$existing && $item->ItemId !== $item_id && $folder_id !== $this->id )
                 $bufferIds[] = $item->ItemId;
-            else{
-                // Do not trust MySQL short indexes
-                if( $item->ItemId == $existing->item_id)
-                    echo 'DUPLICATE ITEM ID (FULL-MATCH)' . PHP_EOL;
+            else
+            {
+                if($existing->exchange_folder_id !== $this->id)
+                    echo 'DUPLICATE ITEM ID (FULL-ID-MATCH & FOLDER-ID)' . PHP_EOL;
 
                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
