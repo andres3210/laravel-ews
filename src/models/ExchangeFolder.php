@@ -110,7 +110,8 @@ class ExchangeFolder extends Model
 
         $bufferIds = [];
         $limit = 30;
-        foreach($items AS $key => $item){
+        $itemsSize = count($items);
+        foreach($items AS $index => $item){
             $results['listed']++;
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
@@ -138,7 +139,7 @@ class ExchangeFolder extends Model
             }
 
 
-            if( (count($bufferIds) >= $limit || !next($items)) && count($bufferIds) > 0 ){
+            if( (count($bufferIds) >= $limit || $index == ($itemsSize - 1)  ) && count($bufferIds) > 0 ){
                 $emails = $exchange->getEmailItem($bufferIds);
 
                 // Reset Buffer
