@@ -112,8 +112,6 @@ class ExchangeFolder extends Model
         foreach($items AS $key => $item){
             $results['downloaded']++;
 
-            echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
-
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
             // MySQL Indexes do not support the length of EWS Item Ids.
@@ -125,10 +123,12 @@ class ExchangeFolder extends Model
             $folder_id = $existing ? $existing->exchange_folder_id : '';
 
 
-            if( !$existing && $item->ItemId != $item_id && $folder_id != $this->id )
+            if( !$existing || $item->ItemId != $item_id || $folder_id != $this->id )
                 $bufferIds[] = $item->ItemId;
             else
             {
+                echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
+
                 if($item->ItemId == $item_id)
                     echo 'DUPLICATE ITEM ID (FULL-ID-MATCH)' . PHP_EOL;
 
