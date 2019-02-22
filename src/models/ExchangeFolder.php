@@ -60,10 +60,12 @@ class ExchangeFolder extends Model
                 $this->save();
 
                 $endDate = new \DateTime($status_data->needleDate->format('Y-m-d H:i:s'));
-                $endDate->modify('-90 days');
+                $endDate->modify('-10 days');
+
 
                 $search['dateFrom'] = $endDate;
                 $search['dateTo']   = $status_data->needleDate;
+                $search['limit']    = 1000;
                 break;
 
             case 'last':
@@ -109,6 +111,8 @@ class ExchangeFolder extends Model
         $limit = 30;
         foreach($items AS $key => $item){
             $results['downloaded']++;
+
+            echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 

@@ -36,10 +36,16 @@ use \jamesiarmes\PhpEws\Type\PathToUnindexedFieldType;
 use \jamesiarmes\PhpEws\Type\PushSubscriptionRequestType;
 use \jamesiarmes\PhpEws\Type\RestrictionType;
 use \jamesiarmes\PhpEws\Type\FolderIdType;
+use \jamesiarmes\PhpEws\Type\IndexedPageViewType;
+use \jamesiarmes\PhpEws\Type\FieldOrderType;
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfNotificationEventTypesType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
+use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfFieldOrdersType;
+
+
+
 
 
 class ExchangeClient extends Client {
@@ -116,7 +122,7 @@ class ExchangeClient extends Client {
         if($email == $this->impersonationEmail)
             return;
 
-        echo 'set impersonate '.$email.PHP_EOL;
+        //echo 'set impersonate '.$email.PHP_EOL;
         $ei = new ExchangeImpersonationType();
         $sid = new ConnectingSIDType();
         $sid->PrimarySmtpAddress = $email;
@@ -215,11 +221,27 @@ class ExchangeClient extends Client {
         }
 
         // Limits the number of items retrieved
-        /*$request->IndexedPageItemView = new IndexedPageViewType();
-        $request->IndexedPageItemView->BasePoint = "Beginning";
-        $request->IndexedPageItemView->Offset = 0;
-        $request->IndexedPageItemView->MaxEntriesReturnedSpecified = true;
-        $request->IndexedPageItemView->MaxEntriesReturned = 300; //Can not go over 1000 */
+        // Can not exceed 1000 as its the EWS default limit
+        if( isset($search['limit']) ){
+            $request->IndexedPageItemView = new IndexedPageViewType();
+            $request->IndexedPageItemView->BasePoint = "Beginning"; // Newest batch
+            //$request->IndexedPageItemView->BasePoint = "End";
+            $request->IndexedPageItemView->Offset = 0;
+            $request->IndexedPageItemView->MaxEntriesReturnedSpecified = true;
+            $request->IndexedPageItemView->MaxEntriesReturned = $search['limit'];
+        }
+
+        // sort order
+        $order = new FieldOrderType();
+        $order->Order = 'Descending';
+
+        $order->FieldURI = new PathToUnindexedFieldType();
+        $order->FieldURI->FieldURI  = 'item:DateTimeReceived';
+
+        $request->SortOrder = new NonEmptyArrayOfFieldOrdersType();
+        $request->SortOrder->FieldOrder = array();
+        $request->SortOrder->FieldOrder[] = $order;
+
 
         // Send Request
         $response = $this->FindItem($request);
