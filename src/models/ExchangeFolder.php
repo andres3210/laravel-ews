@@ -131,9 +131,9 @@ class ExchangeFolder extends Model
                 $bufferIds[] = $item->ItemId;
             else
             {
-                echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
-                echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
-                    $existing->subject .'('.$existing->from.')'. PHP_EOL;
+                // echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
+                // echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
+                    // $existing->subject .'('.$existing->from.')'. PHP_EOL;
 
                 $results['existing']++;
                 if($results['oldest'] > $existing->created_at)
