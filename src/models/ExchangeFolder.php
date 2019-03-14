@@ -127,9 +127,14 @@ class ExchangeFolder extends Model
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
             else if(
-                strcmp($item->ItemId, $existing->item_id) == -8192 ||
-                strcmp($item->ItemId, $existing->item_id) == 8192  ||
-                strcmp($item->ItemId, $existing->item_id) == 32
+                (
+                    strcmp($item->ItemId, $existing->item_id) == -8192 ||
+                    strcmp($item->ItemId, $existing->item_id) == 8192  ||
+                    strcmp($item->ItemId, $existing->item_id) == 32
+                )
+                &&
+                    strcmp($item->Subject, $existing->subject) == 0
+
             ) {
                 // -8192 || 8192 || 32
                 echo 'Diff: '. strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
@@ -140,6 +145,8 @@ class ExchangeFolder extends Model
 
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
                 $bufferIds[] = $item->ItemId;
+                echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
+                echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
                 echo 'added possible duplicate id verified - ' . strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
             }
 
