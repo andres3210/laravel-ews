@@ -78,14 +78,19 @@ class ExchangeFolder extends Model
                 ])->orderBy('created_at', 'ASC')->first();
 
                 $endDate = new \DateTime('now');
-                if( $lastItem )
-                    $endDate = $lastItem->created_at;
+                //if( $lastItem )
+                    //$endDate = $lastItem->created_at;
 
                 $startDate = new \DateTime( $endDate->format('Y-m-d H:i:s'));
                 $startDate->modify('- 1 month');
 
                 $search['dateFrom'] = $startDate;
                 $search['dateTo']   = $endDate;
+
+                $status_data = (object)([
+                    'syncMode'   => $mode,
+                    'needleDate' => new \DateTime('now')
+                ]);
                 break;
         }
 
@@ -116,33 +121,16 @@ class ExchangeFolder extends Model
         foreach($items AS $index => $item){
             $results['listed']++;
 
-            $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
+            $existing = ExchangeItem::where(['item_id' => base64_decode($item->ItemId)])->first();
 
             if( !$existing ){
-                echo 'added new' . PHP_EOL;
+                //echo 'added new' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
             }
 
 
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
-            else if(
-                (
-                    strcmp($item->ItemId, $existing->item_id) == -8192 ||
-                    strcmp($item->ItemId, $existing->item_id) == 8192  ||
-                    strcmp($item->ItemId, $existing->item_id) == 32
-                )
-                &&
-                    strcmp($item->Subject, $existing->subject) == 0
-
-            ) {
-                // -8192 || 8192 || 32
-                echo 'Diff: '. strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
-                echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
-                echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
-                echo 'added possible SEMI duplicate id detected' . PHP_EOL;
-            }
-
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
                 $bufferIds[] = $item->ItemId;
                 echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
@@ -162,7 +150,7 @@ class ExchangeFolder extends Model
             {
                  //echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
                  //echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
-                 //    $existing->subject .'('.$existing->from.')'. PHP_EOL;
+                     //$existing->subject .'('.$existing->from.')'. PHP_EOL;
 
                 $results['existing']++;
                 if($results['oldest'] > $existing->created_at)

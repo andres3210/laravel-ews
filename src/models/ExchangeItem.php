@@ -26,10 +26,27 @@ class ExchangeItem extends Model
         }
     }
 
+    public function getItemIdAttribute($value)
+    {
+        return base64_encode($value);
+    }
+
+
+
+
     public function setBodyAttribute($value)
     {
         $this->attributes['body'] = gzencode($value);
     }
+
+    public function setItemIdAttribute($value)
+    {
+        $this->attributes['item_id'] = base64_decode($value);
+    }
+
+
+
+
 
     public function save(array $options = [])
     {
@@ -45,6 +62,20 @@ class ExchangeItem extends Model
             $this->subject
         );
     }
+
+    // Based on discussion:
+    // - https://social.msdn.microsoft.com/Forums/en-US/b18243e4-543e-4463-8f39-bf47bc17e791/ews-itemid-structure-and-the-ways-it-can-change?forum=os_exchangeprotocols
+    public function getItemIdObj()
+    {
+        $decoded = $this->item_id;
+        $parts = (object)[
+            'base64' => $this->item_id,
+            'head' => mb_substr($decoded, 0, 43, '8bit'),
+            'id' => mb_substr($decoded, 44, 114, '8bit')
+        ];
+        return $parts;
+    }
+
 
     public function moveToFolder($id)
     {
