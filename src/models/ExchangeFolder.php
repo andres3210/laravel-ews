@@ -78,8 +78,8 @@ class ExchangeFolder extends Model
                 ])->orderBy('created_at', 'ASC')->first();
 
                 $endDate = new \DateTime('now');
-                //if( $lastItem )
-                    //$endDate = $lastItem->created_at;
+                if( $lastItem )
+                    $endDate = $lastItem->created_at;
 
                 $startDate = new \DateTime( $endDate->format('Y-m-d H:i:s'));
                 $startDate->modify('- 1 month');
