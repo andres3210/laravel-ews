@@ -118,18 +118,25 @@ class ExchangeFolder extends Model
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
-            if( !$existing )
+            if( !$existing ){
+                echo 'added new' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+            }
+
 
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
-            else if( strcmp($item->ItemId, $existing->item_id) != 0 )
+            else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
+                echo 'added possible duplicate id verified' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+            }
 
             // Exchange is capable to have 1 Item in multiple folders in the same mailbox
             // We need to have a copy for the internal db
-            else if( $this->id != $existing->exchange_folder_id )
+            else if( $this->id != $existing->exchange_folder_id ){
+                echo 'added duplicate, different folder' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+            }
 
             // Duplicate Item
             else
