@@ -127,11 +127,16 @@ class ExchangeFolder extends Model
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
-                echo $item->ItemId . PHP_EOL;
-                echo $existing->item_id . PHP_EOL;
-                echo 'Diff: '. strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
-                echo 'added possible duplicate id verified' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+                echo 'added possible duplicate id verified' . PHP_EOL;
+            }
+
+            else if( in_array(strcmp($item->ItemId, $existing->item_id), [-8192, 8192, 32]) ) {
+                // -8192 || 8192 || 32
+                echo 'Diff: '. strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
+                echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
+                echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
+                echo 'added possible SEMI duplicate id detected' . PHP_EOL;
             }
 
             // Exchange is capable to have 1 Item in multiple folders in the same mailbox
