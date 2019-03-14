@@ -127,6 +127,9 @@ class ExchangeFolder extends Model
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
+                echo $item->ItemId . PHP_EOL;
+                echo $existing->item_id . PHP_EOL;
+                echo 'Diff: '. strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
                 echo 'added possible duplicate id verified' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
             }
@@ -141,9 +144,9 @@ class ExchangeFolder extends Model
             // Duplicate Item
             else
             {
-                 echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
-                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
-                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
+                 //echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
+                 //echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
+                 //    $existing->subject .'('.$existing->from.')'. PHP_EOL;
 
                 $results['existing']++;
                 if($results['oldest'] > $existing->created_at)
