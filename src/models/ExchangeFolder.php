@@ -118,22 +118,25 @@ class ExchangeFolder extends Model
 
             $existing = ExchangeItem::where(['item_id' => $item->ItemId])->first();
 
+            if( !$existing )
+                $bufferIds[] = $item->ItemId;
+
             // MySQL Indexes do not support the length of EWS Item Ids.
             // Id need to be re-verified to avoid false positive due to incomplete index
-            $item_id = $existing ? $existing->item_id : '';
+            else if( strcmp($item->ItemId, $existing->item_id) != 0 )
+                $bufferIds[] = $item->ItemId;
 
             // Exchange is capable to have 1 Item in multiple folders in the same mailbox
             // We need to have a copy for the internal db
-            $folder_id = $existing ? $existing->exchange_folder_id : '';
-
-
-            if( !$existing || $item->ItemId != $item_id || $folder_id != $this->id )
+            else if( $this->id != $existing->exchange_folder_id )
                 $bufferIds[] = $item->ItemId;
+
+            // Duplicate Item
             else
             {
-                // echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
-                // echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
-                    // $existing->subject .'('.$existing->from.')'. PHP_EOL;
+                 echo $item->DateTimeReceived .' >> '.$item->Subject .'('.$item->From.')'. PHP_EOL;
+                 echo 'Duplicate: ' . $existing->created_at->format('Y-m-d H:i:s') .' >> '.
+                     $existing->subject .'('.$existing->from.')'. PHP_EOL;
 
                 $results['existing']++;
                 if($results['oldest'] > $existing->created_at)
