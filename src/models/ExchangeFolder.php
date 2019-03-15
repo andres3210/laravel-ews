@@ -207,6 +207,7 @@ class ExchangeFolder extends Model
         }
 
         if( $mode == self::MODE_PROGRESSIVE ){
+            $results['oldest']->modify('+50 ms');
             $status_data->needleDate = new \DateTime( $results['oldest']->format('Y-m-d H:i:s'));
             $this->status_data = json_encode($status_data);
             $this->status = self::STATUS_PARTIAL_SYNC;
