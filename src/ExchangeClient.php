@@ -156,38 +156,54 @@ class ExchangeClient extends Client {
         $start_date->modify('-1 day');
 
         if( count($search) > 0 ){
-            if( isset($search['dateFrom']) && get_class($search['dateFrom']) == 'DateTime' )
+
+            // Build the restriction.
+            $request->Restriction = new RestrictionType();
+            if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+                $request->Restriction->And = new AndType();
+
+
+
+
+
+
+            if( isset($search['dateFrom']) && get_class($search['dateFrom']) == 'DateTime' ){
                 $start_date = $search['dateFrom'];
 
-            if( isset($search['dateTo']) && get_class($search['dateTo']) == 'DateTime' )
+                // Build the start date restriction.
+                $greater_than = new IsGreaterThanOrEqualToType();
+                $greater_than->FieldURI = new PathToUnindexedFieldType();
+                $greater_than->FieldURI->FieldURI = UnindexedFieldURIType::ITEM_DATE_TIME_RECEIVED;
+                $greater_than->FieldURIOrConstant = new FieldURIOrConstantType();
+                $greater_than->FieldURIOrConstant->Constant = new ConstantValueType();
+                $greater_than->FieldURIOrConstant->Constant->Value = $start_date->format('c');
+
+                if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+                    $request->Restriction->And->IsGreaterThanOrEqualTo = $greater_than;
+                else
+                    $request->Restriction->IsGreaterThanOrEqualTo = $greater_than;
+            }
+
+
+            if( isset($search['dateTo']) && get_class($search['dateTo']) == 'DateTime' ){
                 $end_date = $search['dateTo'];
 
+                // Build the end date restriction;
+                $less_than = new IsLessThanOrEqualToType();
+                $less_than->FieldURI = new PathToUnindexedFieldType();
+                $less_than->FieldURI->FieldURI = UnindexedFieldURIType::ITEM_DATE_TIME_RECEIVED;
+                $less_than->FieldURIOrConstant = new FieldURIOrConstantType();
+                $less_than->FieldURIOrConstant->Constant = new ConstantValueType();
+                $less_than->FieldURIOrConstant->Constant->Value = $end_date->format('c');
+
+                if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+                    $request->Restriction->And->IsLessThanOrEqualTo = $less_than;
+                else
+                    $request->Restriction->IsLessThanOrEqualTo = $less_than;
+            }
         }
 
-
-        // Build the start date restriction.
-        $greater_than = new IsGreaterThanOrEqualToType();
-        $greater_than->FieldURI = new PathToUnindexedFieldType();
-        $greater_than->FieldURI->FieldURI = UnindexedFieldURIType::ITEM_DATE_TIME_RECEIVED;
-        $greater_than->FieldURIOrConstant = new FieldURIOrConstantType();
-        $greater_than->FieldURIOrConstant->Constant = new ConstantValueType();
-        $greater_than->FieldURIOrConstant->Constant->Value = $start_date->format('c');
-
-
-        // Build the end date restriction;
-        $less_than = new IsLessThanOrEqualToType();
-        $less_than->FieldURI = new PathToUnindexedFieldType();
-        $less_than->FieldURI->FieldURI = UnindexedFieldURIType::ITEM_DATE_TIME_RECEIVED;
-        $less_than->FieldURIOrConstant = new FieldURIOrConstantType();
-        $less_than->FieldURIOrConstant->Constant = new ConstantValueType();
-        $less_than->FieldURIOrConstant->Constant->Value = $end_date->format('c');
-
-
-        // Build the restriction.
-        $request->Restriction = new RestrictionType();
-        $request->Restriction->And = new AndType();
-        $request->Restriction->And->IsGreaterThanOrEqualTo = $greater_than;
-        $request->Restriction->And->IsLessThanOrEqualTo = $less_than;
+        //print_r($request); exit();
 
         // Search recursively.
         $request->Traversal = FolderQueryTraversalType::SHALLOW;
