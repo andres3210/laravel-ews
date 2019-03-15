@@ -56,16 +56,9 @@ class ExchangeFolder extends Model
                 else{
                     $status_data = json_decode($this->status_data);
                     $status_data->needleDate = new \DateTime($status_data->needleDate->date);
-                    $status_data->needleDate->modify('-1 Second');
                 }
                 $this->save();
 
-
-                $endDate = new \DateTime($status_data->needleDate->format('Y-m-d H:i:s'));
-                $endDate->modify('-60 days');
-
-
-                //$search['dateFrom'] = $endDate;
                 $search['dateTo']   = $status_data->needleDate;
                 $search['limit']    = 1000;
                 break;
@@ -133,15 +126,15 @@ class ExchangeFolder extends Model
             // Id need to be re-verified to avoid false positive due to incomplete index
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
                 $bufferIds[] = $item->ItemId;
-                echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
-                echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
-                echo 'added possible duplicate id verified - ' . strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
+                //echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
+                //echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
+                //echo 'added possible duplicate id verified - ' . strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
             }
 
             // Exchange is capable to have 1 Item in multiple folders in the same mailbox
             // We need to have a copy for the internal db
             else if( $this->id != $existing->exchange_folder_id ){
-                echo 'added duplicate, different folder' . PHP_EOL;
+                //echo 'added duplicate, different folder' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
             }
 
@@ -153,8 +146,9 @@ class ExchangeFolder extends Model
                      //$existing->subject .'('.$existing->from.')'. PHP_EOL;
 
                 $results['existing']++;
-                if($results['oldest'] > $existing->created_at)
-                    $results['oldest'] = $existing->created_at;
+                $tmpDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $item->DateTimeReceived );
+                if($results['oldest'] > $tmpDate)
+                    $results['oldest'] = $tmpDate;
             }
 
 
@@ -207,7 +201,6 @@ class ExchangeFolder extends Model
         }
 
         if( $mode == self::MODE_PROGRESSIVE ){
-            $results['oldest']->modify('-200 ms');
             $status_data->needleDate = new \DateTime( $results['oldest']->format('Y-m-d H:i:s'));
             $this->status_data = json_encode($status_data);
             $this->status = self::STATUS_PARTIAL_SYNC;
