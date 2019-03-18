@@ -159,11 +159,11 @@ class ExchangeClient extends Client {
 
             // Build the restriction.
             $request->Restriction = new RestrictionType();
-            if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+            $enableAndCondition = false;
+            if( count(array_intersect( array_keys($search), ['dateFrom', 'dateTo'])) > 1 ){
                 $request->Restriction->And = new AndType();
-
-
-
+                $enableAndCondition = true;
+            }
 
 
 
@@ -178,7 +178,7 @@ class ExchangeClient extends Client {
                 $greater_than->FieldURIOrConstant->Constant = new ConstantValueType();
                 $greater_than->FieldURIOrConstant->Constant->Value = $start_date->format('c');
 
-                if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+                if( $enableAndCondition )
                     $request->Restriction->And->IsGreaterThanOrEqualTo = $greater_than;
                 else
                     $request->Restriction->IsGreaterThanOrEqualTo = $greater_than;
@@ -196,7 +196,7 @@ class ExchangeClient extends Client {
                 $less_than->FieldURIOrConstant->Constant = new ConstantValueType();
                 $less_than->FieldURIOrConstant->Constant->Value = $end_date->format('c');
 
-                if( count(array_intersect_assoc($search, ['dateFrom', 'dateTo'])) > 1 )
+                if( $enableAndCondition )
                     $request->Restriction->And->IsLessThanOrEqualTo = $less_than;
                 else
                     $request->Restriction->IsLessThanOrEqualTo = $less_than;
