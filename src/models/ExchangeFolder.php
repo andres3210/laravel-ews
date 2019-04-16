@@ -17,6 +17,19 @@ class ExchangeFolder extends Model
     protected $fillable = ['exchange_mailbox_id', 'item_id', 'parent_id', 'name'];
 
 
+
+
+    public function setItemIdAttribute($value)
+    {
+        $this->attributes['item_id'] = base64_decode($value);
+    }
+
+    public function getItemIdAttribute($value)
+    {
+        return base64_encode($value);
+    }
+
+
     /**
      * progressive mode
      *  scans full folder starting from now till the beginning
