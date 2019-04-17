@@ -7,7 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 class ExchangeSubscription extends Model
 {
 
-    protected $fillable = ['subscription_id', 'connection', 'callback', 'expire_on'];
+    protected $fillable = ['subscription_id', 'exchange_mailbox_id', 'connection', 'callback', 'expire_on'];
+
+
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    |
+     */
+    public function mailbox()
+    {
+        return $this->belongsTo('andres3210\laraews\models\ExchangeMailbox', 'exchange_mailbox_id', 'id');
+    }
+
 
     public function handle($notification)
     {
@@ -60,6 +74,6 @@ class ExchangeSubscription extends Model
         }
 
         // Invoke Function on Subscription
-        return call_user_func( $this->callback, $events, $this->toArray()['connection']);
+        return call_user_func( $this->callback, $events, $this->mailbox->getExchangeConnection() );
     }
 }

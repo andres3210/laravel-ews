@@ -120,6 +120,11 @@ class ExchangeClient extends Client {
         return null;
     }
 
+    public function getServer()
+    {
+        return $this->server;
+    }
+
     public function getUsername()
     {
         return $this->username;
@@ -319,7 +324,7 @@ class ExchangeClient extends Client {
                 $item = new ItemIdType();
 
                 // CV Office Exchange was workign with URL-Econded IDs
-                //$item->Id = urldecode($_id);
+                // $item->Id = urldecode($_id);
 
                 // Office 365 only works sending plain ItemId
                 $item->Id = $_id;
@@ -396,7 +401,7 @@ class ExchangeClient extends Client {
         }
 
         if( count($errors) > 0 )
-            throw( new Exception('Exchange EWS GetItems Error >> ' . print_r($errors, 1)) );
+            throw( new Exception('Exchange EWS GetItems Error >> ' . print_r($errors, 1)));
 
         return $buffer;
     }
@@ -547,7 +552,7 @@ class ExchangeClient extends Client {
     }
 
 
-    public function subscribePushNotifications($callbackUri, $callback)
+    public function subscribePushNotifications($callbackUri, $callback, $mailbox = null)
     {
         $request = new SubscribeType();
 
@@ -584,10 +589,11 @@ class ExchangeClient extends Client {
 
                 // Register Subscription
                 $laraewsSubscription = ExchangeSubscription::create([
-                    'subscription_id'   => $subscription->SubscriptionId,
-                    'callback'          => $callback,
-                    'expire_on'         => null,
-                    'connection'        => $this->ews_connection
+                    'subscription_id'       => $subscription->SubscriptionId,
+                    'callback'              => $callback,
+                    'expire_on'             => null,
+                    'connection'            => $this->ews_connection,
+                    'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null
                 ]);
 
                 return $laraewsSubscription;
