@@ -80,6 +80,8 @@ class ExchangeClient extends Client {
 
     private $impersonationEmail = '';
 
+    private $ews_connection = 'default';
+
 
     public function __construct($server = null, $username = null, $password = null, $version = null, $env = null)
     {
@@ -111,6 +113,7 @@ class ExchangeClient extends Client {
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => false
                 ]);
+            $conn->ews_connection = $connection;
             return $conn;
         }
 
@@ -583,7 +586,8 @@ class ExchangeClient extends Client {
                 $laraewsSubscription = ExchangeSubscription::create([
                     'subscription_id'   => $subscription->SubscriptionId,
                     'callback'          => $callback,
-                    'expire_on'         => null //\Carbon\Carbon::now()->modify('+1 hour')
+                    'expire_on'         => null,
+                    'connection'        => $this->ews_connection
                 ]);
 
                 return $laraewsSubscription;

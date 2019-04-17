@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ExchangeSubscription extends Model
 {
 
-    protected $fillable = ['subscription_id', 'callback', 'expire_on'];
+    protected $fillable = ['subscription_id', 'connection', 'callback', 'expire_on'];
 
     public function handle($notification)
     {
@@ -60,6 +60,6 @@ class ExchangeSubscription extends Model
         }
 
         // Invoke Function on Subscription
-        return call_user_func( $this->callback, $events );
+        return call_user_func( $this->callback, $events, $this->toArray()['connection']);
     }
 }
