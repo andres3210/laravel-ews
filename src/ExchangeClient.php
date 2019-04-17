@@ -83,32 +83,38 @@ class ExchangeClient extends Client {
 
     public function __construct($server = null, $username = null, $password = null, $version = null, $env = null)
     {
-        // Set the object properties.
-        $this->setCurlOptions([
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false
-        ]);
+        $config = config('exchange.connections.'.config('exchange.default'));
 
-        if( $env == 'prod')
-        {
-            $this->setServer($server        ? $server   : env('EXCHANGE_HOST_PROD'));
-            $this->setUsername($username    ? $username : env('EXCHANGE_USER_PROD'));
-            $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD_PROD'));
-            $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION_PROD', self::VERSION_2013));
-            $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL_PROD', false);
-            if( $impersonateEmail )
-                $this->setImpersonationByEmail($impersonateEmail);
+        $this->setServer($server        ? $server   : $config['host']);
+        $this->setUsername($username    ? $username : $config['username']);
+        $this->setPassword($password    ? $password : $config['password']);
+        $this->setVersion($version      ? $version  : constant('self::'.$config['version']) );
+
+        if( !$config['ssl_verify'] )
+            $this->setCurlOptions([
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false
+            ]);
+    }
+
+
+    public static function getConnection($connection = null)
+    {
+        $config = $connection != null ?
+            config('exchange.connections.'.$connection) : config('exchange.connections.'.config('exchange.default'));
+
+        if( $config != null ){
+            $version = isset(self::$config['version']) ? constant('self::'.$config['version']) : self::VERSION_2013;
+            $conn = new self($config['host'], $config['username'], $config['password'], $version);
+            if( !$config['ssl_verify'] )
+                $conn->setCurlOptions([
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false
+                ]);
+            return $conn;
         }
-        else
-        {
-            $this->setServer($server        ? $server   : env('EXCHANGE_HOST'));
-            $this->setUsername($username    ? $username : env('EXCHANGE_USER'));
-            $this->setPassword($password    ? $password : env('EXCHANGE_PASSWORD'));
-            $this->setVersion($version      ? $version  : env('EXCHANGE_VERSION', self::VERSION_2013));
-            $impersonateEmail = env('EXCHANGE_IMPERSONATE_EMAIL', false);
-            if( $impersonateEmail )
-                $this->setImpersonationByEmail($impersonateEmail);
-        }
+
+        return null;
     }
 
     public function getUsername()
@@ -122,10 +128,9 @@ class ExchangeClient extends Client {
         if($email == $this->impersonationEmail)
             return;
 
-        //echo 'set impersonate '.$email.PHP_EOL;
-        $ei = new ExchangeImpersonationType();
         $sid = new ConnectingSIDType();
         $sid->PrimarySmtpAddress = $email;
+        $ei = new ExchangeImpersonationType();
         $ei->ConnectingSID = $sid;
         $this->setImpersonation($ei);
 

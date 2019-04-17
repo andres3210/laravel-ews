@@ -12,27 +12,45 @@ class ExchangeMailbox extends Model
 
     protected $fillable = ['host', 'email', 'role'];
 
+
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    |
+     */
+    public function folders()
+    {
+        return $this->hasMany('andres3210\laraews\models\ExchangeFolder');
+    }
+
+
+    /**
+     * Get assignated connection to this folder
+     *
+     * @return ExchangeClient
+     */
+    public function getExchangeConnection()
+    {
+        $exchange = ExchangeClient::getConnection($this->ews_connection);
+        $exchange->setImpersonationByEmail($this->email);
+        return $exchange;
+    }
+
+
     public function syncFolderStructure()
     {
-        $env = 'dev';
-        if( strpos($this->email, 'canadavisa.com') !== false)
-            $env = 'prod';
-
-        $exchange = new ExchangeClient(null, null, null, null, $env);
-
-        if($this->email != env('EXCHANGE_EMAIL'))
-            $exchange->setImpersonationByEmail($this->email);
-
+        $exchange = $this->getExchangeConnection();
         $folders = $exchange->listFolders();
 
         foreach( $folders AS $folder ){
             $existing = ExchangeFolder::where([
-                'item_id' => $folder->id,
+                'item_id' => base64_decode($folder->id),
                 'exchange_mailbox_id' => $this->id
             ])->first();
 
-            // re-compare ID as mysql is limited to 171 bytes and EWS ID is longer
-            if( !$existing || $existing->item_id != $folder->id )
+            if( !$existing )
                 ExchangeFolder::create([
                     'item_id' => $folder->id,
                     'exchange_mailbox_id' => $this->id,
@@ -40,7 +58,6 @@ class ExchangeMailbox extends Model
                     'parent_id' => $folder->ParentFolderId
                 ]);
         }
-
 
         return $folders;
     }

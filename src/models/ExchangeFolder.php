@@ -13,12 +13,16 @@ class ExchangeFolder extends Model
     const MODE_PROGRESSIVE = 'PROGRESSIVE';
     const STATUS_PARTIAL_SYNC = 'PARTIAL_SYNC';
 
-
     protected $fillable = ['exchange_mailbox_id', 'item_id', 'parent_id', 'name'];
 
 
-
-
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Accessors and Mutators
+    |--------------------------------------------------------------------------
+    |
+     */
     public function setItemIdAttribute($value)
     {
         $this->attributes['item_id'] = base64_decode($value);
@@ -31,6 +35,44 @@ class ExchangeFolder extends Model
 
 
     /**
+    |
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    |
+     */
+    public function mailbox()
+    {
+        return $this->belongsTo('andres3210\laraews\models\ExchangeMailbox', 'exchange_mailbox_id', 'id');
+    }
+
+
+    /**
+     * Get assignated connection to this folder
+     *
+     * @return ExchangeClient
+     */
+    public function getExchangeConnection()
+    {
+        return $this->mailbox->getExchangeConnection();
+    }
+
+
+    /**
+     * List items in remote exchange folder
+     *
+     * @param $search | dateFrom, dateTo
+     * @return Array | EWS Email Items
+     */
+    public function getExchangeItems($search)
+    {
+        $exchange = $this->getExchangeConnection();
+        $emails = $exchange->getFolderItems($this->item_id, $search);
+        return $emails;
+    }
+
+
+    /**
      * progressive mode
      *  scans full folder starting from now till the beginning
      *
@@ -38,17 +80,7 @@ class ExchangeFolder extends Model
      *  scans last month of email items
      */
     public function syncExchange( $mode = 'last', $params = null ){
-
-        $mailbox = ExchangeMailbox::findOrFail($this->exchange_mailbox_id);
-
-        $env = 'dev';
-        if( strpos($mailbox->email, 'canadavisa.com') !== false)
-            $env = 'prod';
-
-        $exchange = new ExchangeClient(null, null, null, null, $env);
-
-        if($mailbox->email != env('EXCHANGE_EMAIL'))
-            $exchange->setImpersonationByEmail($mailbox->email);
+        $exchange = $this->getExchangeConnection();
 
         $search = [];
         switch($mode){
