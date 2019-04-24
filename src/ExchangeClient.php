@@ -13,6 +13,8 @@ use \jamesiarmes\PhpEws\Request\FindFolderType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
 use \jamesiarmes\PhpEws\Request\MoveItemType;
 use \jamesiarmes\PhpEws\Request\SubscribeType;
+use \jamesiarmes\PhpEws\Request\FindItemType;
+use \jamesiarmes\PhpEws\Request\CreateItemType;
 
 use \jamesiarmes\PhpEws\Enumeration\DisposalType;
 use \jamesiarmes\PhpEws\Enumeration\DefaultShapeNamesType;
@@ -20,6 +22,11 @@ use \jamesiarmes\PhpEws\Enumeration\DistinguishedFolderIdNameType;
 use \jamesiarmes\PhpEws\Enumeration\ResponseClassType;
 use \jamesiarmes\PhpEws\Enumeration\UnindexedFieldURIType;
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
+use \jamesiarmes\PhpEws\Enumeration\ItemQueryTraversalType;
+use \jamesiarmes\PhpEws\Enumeration\BodyTypeType;
+use \jamesiarmes\PhpEws\Enumeration\ItemClassType;
+use \jamesiarmes\PhpEws\Enumeration\CalendarItemCreateOrDeleteOperationType;
+use \jamesiarmes\PhpEws\Enumeration\RoutingType;
 
 use \jamesiarmes\PhpEws\Type\AndType;
 use \jamesiarmes\PhpEws\Type\ConnectingSIDType;
@@ -38,13 +45,20 @@ use \jamesiarmes\PhpEws\Type\RestrictionType;
 use \jamesiarmes\PhpEws\Type\FolderIdType;
 use \jamesiarmes\PhpEws\Type\IndexedPageViewType;
 use \jamesiarmes\PhpEws\Type\FieldOrderType;
+use \jamesiarmes\PhpEws\Type\CalendarViewType;
+use \jamesiarmes\PhpEws\Type\CalendarItemType;
+use \jamesiarmes\PhpEws\Type\BodyType;
+use \jamesiarmes\PhpEws\Type\TimeZoneDefinitionType;
+use \jamesiarmes\PhpEws\Type\AttendeeType;
+use \jamesiarmes\PhpEws\Type\EmailAddressType;
+
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfNotificationEventTypesType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfFieldOrdersType;
-
-
+use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfAllItemsType;
+use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfAttendeesType;
 
 
 
@@ -120,10 +134,12 @@ class ExchangeClient extends Client {
         return null;
     }
 
+
     public function getServer()
     {
         return $this->server;
     }
+
 
     public function getUsername()
     {
@@ -549,6 +565,135 @@ class ExchangeClient extends Client {
         }
 
         return $allFoldersArr;
+    }
+
+
+    public function getCalendarEvents()
+    {
+        $request = new FindItemType();
+        $request->Traversal = ItemQueryTraversalType::SHALLOW;
+        $request->ItemShape = new ItemResponseShapeType();
+        $request->ItemShape->BaseShape = DefaultShapeNamesType::ALL_PROPERTIES;
+
+        $folder_id = new DistinguishedFolderIdType();
+        $folder_id->Id = new DistinguishedFolderIdNameType();
+        $folder_id->Id->_ = DistinguishedFolderIdNameType::CALENDAR;
+
+        $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
+        $request->ParentFolderIds->DistinguishedFolderId[] = $folder_id;
+
+        $request->CalendarView = new CalendarViewType();
+        $request->CalendarView->StartDate = '2019-04-01T00:00:00Z';
+        $request->CalendarView->EndDate = '2019-04-24T23:59:59Z';
+
+        $result = $this->FindItem($request);
+
+        $items = [];
+        if(
+            isset($result->ResponseMessages) &&
+            isset($result->ResponseMessages->FindItemResponseMessage) &&
+            isset($result->ResponseMessages->FindItemResponseMessage[0]) &&
+            isset($result->ResponseMessages->FindItemResponseMessage[0]->RootFolder) &&
+            isset($result->ResponseMessages->FindItemResponseMessage[0]->RootFolder->Items) &&
+            isset($result->ResponseMessages->FindItemResponseMessage[0]->RootFolder->Items->CalendarItem)
+        )
+            $items = $result->ResponseMessages->FindItemResponseMessage[0]->RootFolder->Items->CalendarItem;
+
+        $events = [];
+        foreach ($items as $item) {
+            $events[] = (object)[
+                'Subject'   => $item->Subject,
+                'ItemId'    => $item->ItemId->Id,
+                'Starts'    => $item->Start,
+                'End'       => $item->End,
+                'Duration'  => $item->Duration,
+                'Organizer' => isset($item->Organizer) && isset($item->Organizer->Mailbox) ? $item->Organizer->Mailbox->Name : ''
+            ];
+        }
+
+        return $events;
+    }
+
+
+    /**
+     * @param $invites array | object contact [name, email]
+     */
+    public function createCalendarEvent($create = [])
+    {
+        if( !isset($create['subject']) || !isset($create['message']) )
+            return 'missing fields';
+
+        if( !isset($create['start']) || get_class($create['start']) != 'DateTime' )
+            return 'invalid start date';
+
+        if( !isset($create['end']) || get_class($create['end']) != 'DateTime' )
+            return 'invalid start date';
+
+        // Replace this with your desired start/end times and guests.
+        $start = $create['start'];
+        $end = $create['end'];
+
+
+        // Build the request,
+        $request = new CreateItemType();
+        $request->SendMeetingInvitations = CalendarItemCreateOrDeleteOperationType::SEND_TO_NONE;
+        $request->Items = new NonEmptyArrayOfAllItemsType();
+
+        // Build the event to be added.
+
+        $event = new CalendarItemType();
+        $event->Start = $start->format('c');
+        $event->End = $end->format('c');
+        $this->setTimezone('Eastern Standard Time');
+        $event->Subject = 'EWS Test Event';
+
+        // Set the event body.
+        $event->Body = new BodyType();
+        $event->Body->_ = 'This is the event body';
+        $event->Body->BodyType = BodyTypeType::TEXT;
+
+        // Iterate over the guests, adding each as an attendee to the request.
+        if( count($create['invites']) >= 1){
+            $request->SendMeetingInvitations = CalendarItemCreateOrDeleteOperationType::SEND_ONLY_TO_ALL;
+
+            $event->RequiredAttendees = new NonEmptyArrayOfAttendeesType();
+
+            foreach ($create['invites'] as $guest) {
+                $attendee = new AttendeeType();
+                $attendee->Mailbox = new EmailAddressType();
+                $attendee->Mailbox->EmailAddress = $guest['email'];
+                $attendee->Mailbox->Name = $guest['name'];
+                $attendee->Mailbox->RoutingType = RoutingType::SMTP;
+                $event->RequiredAttendees->Attendee[] = $attendee;
+            }
+        }
+
+        // Add the event to the request. You could add multiple events to create more
+        // than one in a single request.
+        $request->Items->CalendarItem[] = $event;
+
+        $response = $this->CreateItem($request);
+
+        if(
+            isset($response->ResponseMessages) &&
+            isset($response->ResponseMessages->CreateItemResponseMessage) &&
+            isset($response->ResponseMessages->CreateItemResponseMessage[0]) &&
+            isset($response->ResponseMessages->CreateItemResponseMessage[0]->Items) &&
+            isset($response->ResponseMessages->CreateItemResponseMessage[0]->Items->CalendarItem)
+        ){
+            $items = $response->ResponseMessages->CreateItemResponseMessage[0]->Items->CalendarItem;
+
+            $events = [];
+            foreach ($items as $item)
+                $events[] = (object)[
+                    'ItemId'    => $item->ItemId->Id,
+                ];
+
+            return $events;
+        }
+
+        return [];
+
     }
 
 
