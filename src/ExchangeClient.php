@@ -640,16 +640,17 @@ class ExchangeClient extends Client {
         $request->Items = new NonEmptyArrayOfAllItemsType();
 
         // Build the event to be added.
-
+        //$this->setTimezone('Eastern Standard Time');
         $event = new CalendarItemType();
         $event->Start = $start->format('c');
         $event->End = $end->format('c');
-        $this->setTimezone('Eastern Standard Time');
-        $event->Subject = 'EWS Test Event';
+
+
+        $event->Subject = $create['subject'];
 
         // Set the event body.
         $event->Body = new BodyType();
-        $event->Body->_ = 'This is the event body';
+        $event->Body->_ = $create['message'];
         $event->Body->BodyType = BodyTypeType::TEXT;
 
         // Iterate over the guests, adding each as an attendee to the request.
