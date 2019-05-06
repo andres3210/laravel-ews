@@ -7,7 +7,30 @@ use Illuminate\Database\Eloquent\Model;
 class ExchangeSubscription extends Model
 {
 
-    protected $fillable = ['subscription_id', 'exchange_mailbox_id', 'connection', 'callback', 'expire_on'];
+    protected $fillable = ['item_id', 'exchange_mailbox_id', 'callback', 'rules', 'keep_alive', 'expire_on'];
+
+
+    protected $casts = [
+        'rules' => 'array', // cast to json convert
+    ];
+
+
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Setters and Getters
+    |--------------------------------------------------------------------------
+    |
+     */
+    public function getItemIdAttribute($value)
+    {
+        return base64_encode($value);
+    }
+
+    public function setItemIdAttribute($value)
+    {
+        $this->attributes['item_id'] = base64_decode($value);
+    }
 
 
     /**

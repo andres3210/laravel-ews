@@ -17,7 +17,8 @@ class NotificationRequest {
         if( isset($args->ResponseMessages) && isset($args->ResponseMessages->SendNotificationResponseMessage) ){
             if( isset($args->ResponseMessages->SendNotificationResponseMessage->Notification) && isset($args->ResponseMessages->SendNotificationResponseMessage->Notification->SubscriptionId) ){
                 $subscriptionId = $args->ResponseMessages->SendNotificationResponseMessage->Notification->SubscriptionId;
-                $subscription = ExchangeSubscription::where('subscription_id', '=', $subscriptionId)->first();
+
+                $subscription = ExchangeSubscription::where('item_id', '=', base64_decode($subscriptionId))->first();
 
                 if($subscription)
                     $res = $subscription->handle($args->ResponseMessages->SendNotificationResponseMessage);

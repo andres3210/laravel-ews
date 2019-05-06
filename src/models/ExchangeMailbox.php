@@ -45,7 +45,7 @@ class ExchangeMailbox extends Model
         $folders = $exchange->listFolders();
 
         $exclude = [
-            'Notes',
+            //'Notes' - user duplicated internal name "Notes",
             'Calendar', 'Contacts', 'GAL Contacts', 'Recipient Cache', 'Common Views', 'Deferred Action',
             'ExchangeSyncData', 'Finder', 'Freebusy Data', 'Location', 'MailboxAssociations', 'ParkedMessages',
             'PeopleConnect', 'Recoverable Items', 'Calendar Logging', 'Deletions', 'Purges', 'Versions',
@@ -123,7 +123,7 @@ class ExchangeMailbox extends Model
                 }
             }
         }
-        
+
         return $obj_folders;
     }
 

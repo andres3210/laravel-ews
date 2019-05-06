@@ -735,11 +735,12 @@ class ExchangeClient extends Client {
 
                 // Register Subscription
                 $laraewsSubscription = ExchangeSubscription::create([
-                    'subscription_id'       => $subscription->SubscriptionId,
+                    'item_id'               => $subscription->SubscriptionId,
                     'callback'              => $callback,
                     'expire_on'             => null,
-                    'connection'            => $this->ews_connection,
-                    'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null
+                    'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
+                    'keep_alive'            => 120,
+                    'rules'                 => []
                 ]);
 
                 return $laraewsSubscription;
