@@ -315,6 +315,7 @@ class ExchangeClient extends Client {
                     'Subject' => $item->Subject,
                     'ItemId' => $item->ItemId->Id,
                     'From' => (isset($item->From) && isset($item->From->Mailbox) ) ? $item->From->Mailbox->Name : '',
+                    'FromEmail' => (isset($item->From) && isset($item->From->Mailbox) && isset($item->From->Mailbox->EmailAddress) ) ? $item->From->Mailbox->EmailAddress : '',
                     'DisplayTo' => $item->DisplayTo,
                     'DateTimeReceived' => $item->DateTimeReceived
                 ];

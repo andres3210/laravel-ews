@@ -106,6 +106,7 @@ class ExchangeFolder extends Model
 
                 $search['dateTo']   = $status_data->needleDate;
                 $search['limit']    = 1000;
+                //$search['limit']    = 10;
                 break;
 
             case 'last':
@@ -132,10 +133,21 @@ class ExchangeFolder extends Model
                 break;
         }
 
+        $downloadBody = true;
         if( $params != null ){
-            if( isset($params['dateFromLimit']) )
+
+            /*if( isset($params['dateFromLimit']) ){
+                if( !isset($search['dateFrom']) )
+                    $search['dateFrom'] = new \DateTime('now');
+
                 $search['dateFrom'] = $search['dateFrom'] < $params['dateFromLimit'] ? $params['dateFromLimit'] : $search['dateFrom'];
+            }*/
+
+            if( isset($params['skipBody']) && $params['skipBody'] )
+                $downloadBody = false;
         }
+
+        //echo print_r($search, 1);
 
         $items = $exchange->getFolderItems($this->item_id, $search);
 
@@ -153,17 +165,23 @@ class ExchangeFolder extends Model
         }
 
 
+
+
         $bufferIds = [];
         $limit = 30;
         $itemsSize = count($items);
         foreach($items AS $index => $item){
             $results['listed']++;
 
+            //echo $item->ItemId . PHP_EOL;
+            $addToLocalDb = false;
+
             $existing = ExchangeItem::where(['item_id' => base64_decode($item->ItemId)])->first();
 
             if( !$existing ){
                 //echo 'added new' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+                $addToLocalDb = true;
             }
 
 
@@ -171,6 +189,7 @@ class ExchangeFolder extends Model
             // Id need to be re-verified to avoid false positive due to incomplete index
             else if( strcmp($item->ItemId, $existing->item_id) != 0 ){
                 $bufferIds[] = $item->ItemId;
+                $addToLocalDb = true;
                 //echo "Subject " . $item->Subject . ' VS ' , $existing->subject . PHP_EOL;
                 //echo "Date " . $item->DateTimeReceived . ' VS ' , $existing->created_at . PHP_EOL;
                 //echo 'added possible duplicate id verified - ' . strcmp($item->ItemId, $existing->item_id) . PHP_EOL;
@@ -181,6 +200,7 @@ class ExchangeFolder extends Model
             else if( $this->id != $existing->exchange_folder_id ){
                 //echo 'added duplicate, different folder' . PHP_EOL;
                 $bufferIds[] = $item->ItemId;
+                $addToLocalDb = true;
             }
 
             // Duplicate Item
@@ -196,52 +216,92 @@ class ExchangeFolder extends Model
                     $results['oldest'] = $tmpDate;
             }
 
+            if( $downloadBody ) {
+                if ((count($bufferIds) >= $limit || $index == ($itemsSize - 1)) && count($bufferIds) > 0) {
 
-            if( (count($bufferIds) >= $limit || $index == ($itemsSize - 1)  ) && count($bufferIds) > 0 ){
-                $emails = $exchange->getEmailItem($bufferIds);
+                    // Retrieve full body of all emails
+                    $emails = $exchange->getEmailItem($bufferIds);
 
-                // Reset Buffer
-                $bufferIds = [];
+                    // Reset Buffer
+                    $bufferIds = [];
 
-                foreach($emails AS $email){
-                    $results['downloaded']++;
+                    foreach ($emails AS $email) {
+                        $results['downloaded']++;
 
-                    $itemDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $email->DateTimeCreated);
-                    if($results['oldest'] > $itemDate)
-                        $results['oldest'] = $itemDate;
+                        $itemDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $email->DateTimeCreated);
+                        if ($results['oldest'] > $itemDate)
+                            $results['oldest'] = $itemDate;
 
-                    $newExchangeItem = new ExchangeItem([
-                        'item_id'               => $email->ItemId,
-                        'exchange_folder_id'    => $this->id,
-                        'exchange_mailbox_id'   => $this->exchange_mailbox_id,
-                        'message_id'    => $email->InternetMessageId,
-                        'subject'       => isset($email->Subject) ? $email->Subject : '',
-                        'from'          => isset($email->From) ? $email->From : 'no-email',
-                        'to'            => implode(',', $email->To),
-                        'cc'            => implode(',', $email->Cc),
-                        'bcc'           => implode(',', $email->Bcc),
-                        'created_at'    => $itemDate,
-                        'body'          => $email->Body,
-                    ]);
+                        $newExchangeItem = new ExchangeItem([
+                            'item_id' => $email->ItemId,
+                            'exchange_folder_id' => $this->id,
+                            'exchange_mailbox_id' => $this->exchange_mailbox_id,
+                            'message_id' => $email->InternetMessageId,
+                            'subject' => isset($email->Subject) ? $email->Subject : '',
+                            'from' => isset($email->From) ? $email->From : 'no-email',
+                            'to' => implode(',', $email->To),
+                            'cc' => implode(',', $email->Cc),
+                            'bcc' => implode(',', $email->Bcc),
+                            'created_at' => $itemDate,
+                            'body' => $email->Body,
+                        ]);
+
+                        // Only re-link items with empty ItemId
+                        $existingHash = ExchangeItem::where('item_id', '=', '')
+                            ->where('hash', '=', $newExchangeItem->getHash())
+                            ->first();
+
+                        if (!$existingHash) {
+                            $newExchangeItem->save();
+                            $results['inserted']++;
+                        } else {
+                            // Attach new ItemID and location
+                            $existingHash->item_id = $email->ItemId;
+                            $existingHash->exchange_folder_id = $this->id;
+                            $existingHash->exchange_mailbox_id = $this->exchange_mailbox_id;
+                            $existingHash->save();
+                            $results['re-linked']++;
+                        }
+                    }
+                }
+            }// End of Download body
+            else
+            {
+                $itemDate = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i:s\Z', $item->DateTimeReceived);
+                if ($results['oldest'] > $itemDate)
+                    $results['oldest'] = $itemDate;
+
+                // Validate if we have enough information to store email
+                if( $addToLocalDb &&  isset($item->FromEmail) && filter_var($item->FromEmail, FILTER_VALIDATE_EMAIL) ){
+
+                    $tmp = [
+                        'item_id' => $item->ItemId,
+                        'exchange_folder_id' => $this->id,
+                        'exchange_mailbox_id' => $this->exchange_mailbox_id,
+                        //'message_id' => $email->InternetMessageId,
+                        'subject' => isset($item->Subject) ? $item->Subject : '',
+                        'from' => $item->FromEmail,
+                        'to' => filter_var($item->DisplayTo, FILTER_VALIDATE_EMAIL) ? $item->DisplayTo : '',
+                        'cc' => '',
+                        'bcc' => '',
+                        'created_at' => $itemDate,
+                        'body' => null,
+                    ];
+                    //echo print_r($tmp, 1);
+                    $newExchangeItem = new ExchangeItem($tmp);
 
                     // Only re-link items with empty ItemId
                     $existingHash = ExchangeItem::where('item_id', '=', '')
                         ->where('hash', '=', $newExchangeItem->getHash())
                         ->first();
 
-                    if( !$existingHash ){
+                    if (!$existingHash) {
                         $newExchangeItem->save();
                         $results['inserted']++;
-                    }
-                    else{
-                        // Attach new ItemID and location
-                        $existingHash->item_id              = $email->ItemId;
-                        $existingHash->exchange_folder_id   = $this->id;
-                        $existingHash->exchange_mailbox_id  = $this->exchange_mailbox_id;
-                        $existingHash->save();
-                        $results['re-linked']++;
+                        //echo 'saved' . PHP_EOL;
                     }
                 }
+
             }
         }
 
