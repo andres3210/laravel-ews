@@ -27,6 +27,7 @@ use \jamesiarmes\PhpEws\Enumeration\BodyTypeType;
 use \jamesiarmes\PhpEws\Enumeration\ItemClassType;
 use \jamesiarmes\PhpEws\Enumeration\CalendarItemCreateOrDeleteOperationType;
 use \jamesiarmes\PhpEws\Enumeration\RoutingType;
+use \jamesiarmes\PhpEws\Enumeration\MessageDispositionType;
 
 use \jamesiarmes\PhpEws\Type\AndType;
 use \jamesiarmes\PhpEws\Type\ConnectingSIDType;
@@ -51,6 +52,8 @@ use \jamesiarmes\PhpEws\Type\BodyType;
 use \jamesiarmes\PhpEws\Type\TimeZoneDefinitionType;
 use \jamesiarmes\PhpEws\Type\AttendeeType;
 use \jamesiarmes\PhpEws\Type\EmailAddressType;
+use \jamesiarmes\PhpEws\Type\MessageType;
+use \jamesiarmes\PhpEws\Type\SingleRecipientType;
 
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
@@ -59,6 +62,7 @@ use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfFieldOrdersType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfAllItemsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfAttendeesType;
+use \jamesiarmes\PhpEws\ArrayType\ArrayOfRecipientsType;
 
 
 
@@ -327,6 +331,74 @@ class ExchangeClient extends Client {
         return [];
     }
 
+
+    public function createEmailItem($email)
+    {
+
+        // Build the request,
+        $request = new CreateItemType();
+        $request->Items = new NonEmptyArrayOfAllItemsType();
+
+        // Save the message, but do not send it.
+        $request->MessageDisposition = MessageDispositionType::SEND_ONLY;
+
+        // Create the message.
+        $message = new MessageType();
+        $message->Subject = $email['subject'];
+        $message->ToRecipients = new ArrayOfRecipientsType();
+
+        // Set the sender.
+        $message->From = new SingleRecipientType();
+        $message->From->Mailbox = new EmailAddressType();
+        $message->From->Mailbox->EmailAddress = $this->getUsername();
+
+        // Set the recipient.
+        $recipient = new EmailAddressType();
+        $recipient->Name = isset($email['to']['name']) ? $email['to']['name'] : null;
+        $recipient->EmailAddress = $email['to']['email'];
+        $message->ToRecipients->Mailbox[] = $recipient;
+
+        // Set the message body.
+        $message->Body = new BodyType();
+        $message->Body->BodyType = BodyTypeType::TEXT;
+        $message->Body->_ = $email['body'];
+
+
+        // Add the message to the request.
+        $request->Items->Message[] = $message;
+        $response = $this->CreateItem($request);
+
+        // Iterate over the results, printing any error messages or message ids.
+        if( isset($response->ResponseMessages) && isset($response->ResponseMessages->CreateItemResponseMessage) )
+        {
+            $response_messages = $response->ResponseMessages->CreateItemResponseMessage;
+            foreach ($response_messages as $response_message)
+            {
+                // Make sure the request succeeded.
+                if ($response_message->ResponseClass != ResponseClassType::SUCCESS) {
+                    $code = $response_message->ResponseCode;
+                    $message = $response_message->MessageText;
+                    //fwrite(STDERR, "Message failed to create with \"$code: $message\"\n");
+                    echo "Message failed to create with \"$code: $message\"\n";
+                    continue;
+                }
+                // Iterate over the created messages, printing the id for each.
+                foreach ($response_message->Items->Message as $item) {
+                    $output = '- Id: ' . $item->ItemId->Id . "\n";
+                    $output .= '- Change key: ' . $item->ItemId->ChangeKey . "\n";
+                    //fwrite(STDOUT, "Message created successfully.\n$output");
+                    echo  "Message created successfully.\n$output";
+                }
+            }
+
+            //echo print_r($response_messages[0]);
+
+            if( $response_messages[0]->ResponseClass == 'Success' )
+                return true;
+        }
+
+        return false;
+    }
 
     public function getEmailItem($id){
 
