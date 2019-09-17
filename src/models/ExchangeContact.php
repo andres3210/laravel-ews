@@ -9,35 +9,28 @@ use andres3210\laraews\models\ExchangeMailbox;
 use \jamesiarmes\PhpEws\Request\FindItemType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
 use \jamesiarmes\PhpEws\Request\CreateItemType;
-use \jamesiarmes\PhpEws\Request\DeleteItemType;
-use \jamesiarmes\PhpEws\Request\UpdateItemType;
 
+use jamesiarmes\PhpEws\Type\FolderIdType;
 use \jamesiarmes\PhpEws\Type\ItemResponseShapeType;
 use \jamesiarmes\PhpEws\Type\ContactsViewType;
 use \jamesiarmes\PhpEws\Type\DistinguishedFolderIdType;
 use \jamesiarmes\PhpEws\Type\ItemIdType;
 use \jamesiarmes\PhpEws\Type\ContactItemType;
+use \jamesiarmes\PhpEws\Type\PhoneNumberDictionaryType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryType;
-use \jamesiarmes\PhpEws\Type\PathToIndexedFieldType;
+use \jamesiarmes\PhpEws\Type\ExtendedPropertyType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryEntryType;
-use \jamesiarmes\PhpEws\Type\ItemChangeType;
-use \jamesiarmes\PhpEws\Type\SetItemFieldType;
+use \jamesiarmes\PhpEws\Type\CompleteNameType;
 
-
-use \jamesiarmes\PhpEws\Enumeration\DisposalType;
-use \jamesiarmes\PhpEws\Enumeration\ConflictResolutionType;
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
 use \jamesiarmes\PhpEws\Enumeration\DefaultShapeNamesType;
 use \jamesiarmes\PhpEws\Enumeration\DistinguishedFolderIdNameType;
 use \jamesiarmes\PhpEws\Enumeration\ResponseClassType;
 use \jamesiarmes\PhpEws\Enumeration\EmailAddressKeyType;
 use \jamesiarmes\PhpEws\Enumeration\FileAsMappingType;
-use \jamesiarmes\PhpEws\Enumeration\CalendarItemCreateOrDeleteOperationType;
-use \jamesiarmes\PhpEws\Enumeration\DictionaryURIType;
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
-use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfItemChangeDescriptionsType;
 
 
 
@@ -77,22 +70,65 @@ class ExchangeContact extends Model
      */
     public static function ewsContacts($client)
     {
-        // Build the request.
+
+        // Build the request to list all Contact Address Books
+        $request = new \jamesiarmes\PhpEws\Request\FindFolderType();
+        $request->FolderShape = new \jamesiarmes\PhpEws\Type\FolderResponseShapeType();
+        $request->FolderShape->BaseShape = DefaultShapeNamesType::ALL_PROPERTIES;
+        $request->Traversal = FolderQueryTraversalType::DEEP;
+
+        $parent = new DistinguishedFolderIdType();
+        $parent->Id = DistinguishedFolderIdNameType::CONTACTS;
+        $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
+        $request->ParentFolderIds->DistinguishedFolderId[] = $parent;
+
+
+        $response = $client->FindFolder($request);
+        $response_messages = $response->ResponseMessages->FindFolderResponseMessage;
+        $contactBooks = [];
+        foreach ($response_messages as $response_message)
+        {
+            if ($response_message->ResponseClass != ResponseClassType::SUCCESS)
+                throw( new Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
+
+            foreach( $response_message->RootFolder->Folders->ContactsFolder AS $folder )
+            {
+                if( $folder->FolderClass == 'IPF.Contact' )
+                    $contactBooks[] = (object)[
+                        'ItemId'        => $folder->FolderId->Id,
+                        'ParentItemId'  => isset($folder->ParentFolderId) ? $folder->ParentFolderId->Id : null,
+                        'DisplayName'   => $folder->DisplayName,
+                        'FolderClass'   => $folder->FolderClass
+                    ];
+            }
+        }
+
+        echo print_r($contactBooks, 1); exit();
+
+
+        // Build the request to list all Contacts on Contact Address Books
         $request = new FindItemType();
         $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
         $request->ContactsView = new ContactsViewType();
 
         // Return all message properties.
         $request->ItemShape = new ItemResponseShapeType();
-        $request->ItemShape->BaseShape = DefaultShapeNamesType::DEFAULT_PROPERTIES;
-
-        // Search recursively.
+        //$request->ItemShape->BaseShape = DefaultShapeNamesType::DEFAULT_PROPERTIES;
+        $request->ItemShape->BaseShape = DefaultShapeNamesType::ID_ONLY;
         $request->Traversal = FolderQueryTraversalType::SHALLOW;
 
         // Find contacts in the contacts folder.
         $folder_id = new DistinguishedFolderIdType();
         $folder_id->Id = DistinguishedFolderIdNameType::CONTACTS;
         $request->ParentFolderIds->DistinguishedFolderId[] = $folder_id;
+
+        if( count($contactBooks) > 0 )
+            foreach( $contactBooks AS $contactBook )
+            {
+                $folder_id = new \jamesiarmes\PhpEws\Type\FolderIdType();
+                $folder_id->Id = $contactBook->ItemId;
+                $request->ParentFolderIds->FolderId[] = $folder_id;
+            }
 
         $response = $client->FindItem($request);
 
@@ -104,13 +140,19 @@ class ExchangeContact extends Model
         {
             // Make sure the request succeeded.
             if ($response_message->ResponseClass != ResponseClassType::SUCCESS)
-                throw( new \Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
+                throw( new Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
 
             // Iterate over the contacts that were found, printing the id of each.
             $items = $response_message->RootFolder->Items->Contact;
-            foreach ($items as $item) {
+            foreach ($items as $item)
+            {
                 $contacts[] = $item->ItemId->Id;
+
+                if( count($contacts) > 30 )
+                    return $contacts;
             }
+
+            echo print_r($contacts, 1); exit();
         }
 
         return $contacts;
@@ -147,6 +189,8 @@ class ExchangeContact extends Model
             foreach ($response_message->Items->Contact as $item){
                 $contacts[] = (object)[
                     "item_id"       => $item->ItemId->Id,
+                    "parent_folder_id" => isset($item->ParentFolderId) && isset($item->ParentFolderId->Id) ?
+                        $item->ParentFolderId->Id : null,
                     'company_name'  => $item->CompanyName,
                     'first_name'    => $item->CompleteName->FirstName,
                     'last_name'     => $item->CompleteName->LastName,
@@ -164,8 +208,13 @@ class ExchangeContact extends Model
     {
         // Build the request object.
         $request = new CreateItemType();
-        $contact = new ContactItemType();
 
+        // Save to specific Address Book
+        //$request->SavedItemFolderId = new \jamesiarmes\PhpEws\Type\TargetFolderIdType();
+        //$request->SavedItemFolderId->FolderId = new FolderIdType();
+        //$request->SavedItemFolderId->FolderId->Id = 'AAMkADEzYzdiMDU3LWE4ZmQtNGI3My1hNTViLTNkYTE4N2NhZThmMAAuAAAAAAABJesM8IQQSYrHtScgKiGmAQConzvlxVLxRagQBO9zQuhVAAJOZwiWAAA=';
+
+        $contact = new ContactItemType();
         $contact->FileAsMapping = FileAsMappingType::FIRST_SPACE_LAST;
         $contact->GivenName = $item->first_name;
         $contact->Surname = $item->last_name;
@@ -177,8 +226,9 @@ class ExchangeContact extends Model
         $email->_ = $item->email;
         $contact->EmailAddresses = new EmailAddressDictionaryType();
         $contact->EmailAddresses->Entry[] = $email;
-
         $request->Items->Contact[] = $contact;
+
+
         $response = $client->CreateItem($request);
 
         // Iterate over the results, printing any error messages or contact ids.
