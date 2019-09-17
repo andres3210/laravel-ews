@@ -979,6 +979,8 @@
             <xs:enumeration value="contacts:PhysicalAddress:PostalCode" />
             <xs:enumeration value="contacts:PhoneNumber" />
             <xs:enumeration value="contacts:EmailAddress" />
+            <xs:enumeration value="contacts:Surname" />
+            <xs:enumeration value="contacts:GivenName" />
 
             <xs:enumeration value="distributionlist:Members:Member" />
 

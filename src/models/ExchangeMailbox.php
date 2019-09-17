@@ -4,8 +4,10 @@ namespace andres3210\laraews\models;
 
 use Illuminate\Database\Eloquent\Model;
 
-use andres3210\laraews\models\ExchangeFolder;
 use andres3210\laraews\ExchangeClient;
+use andres3210\laraews\models\ExchangeFolder;
+use andres3210\laraews\models\ExchangeContact;
+
 
 class ExchangeMailbox extends Model
 {
@@ -125,6 +127,31 @@ class ExchangeMailbox extends Model
         }
 
         return $obj_folders;
+    }
+
+
+    public function syncContacts()
+    {
+        $exchange = $this->getExchangeConnection();
+        $contactIds = ExchangeContact::ewsContacts($exchange);
+        $contacts = ExchangeContact::ewsDetails($exchange, $contactIds);
+
+        foreach( $contacts AS $ewsContact )
+        {
+            $existing = ExchangeContact::where([
+                'item_id' => base64_decode($ewsContact->item_id),
+                'exchange_mailbox_id' => $this->id
+            ])->first();
+
+            if( !$existing )
+                ExchangeContact::create(array_merge(
+                    ['exchange_mailbox_id' => $this->id],
+                    (array)$ewsContact
+                ));
+            else
+                $existing->update((array)$ewsContact);
+
+        }
     }
 
 }

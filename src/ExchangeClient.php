@@ -56,6 +56,7 @@ use \jamesiarmes\PhpEws\Type\MessageType;
 use \jamesiarmes\PhpEws\Type\SingleRecipientType;
 
 
+
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfNotificationEventTypesType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
@@ -332,6 +333,9 @@ class ExchangeClient extends Client {
     }
 
 
+
+
+
     public function createEmailItem($email)
     {
 
@@ -399,6 +403,7 @@ class ExchangeClient extends Client {
 
         return false;
     }
+
 
     public function getEmailItem($id){
 
