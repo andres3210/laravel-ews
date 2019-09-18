@@ -39,7 +39,10 @@ use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
 class ExchangeContact extends Model
 {
 
-    protected $fillable = ['exchange_mailbox_id', 'item_id', 'first_name', 'last_name', 'email', 'company_name'];
+    protected $fillable = [
+        'item_id', 'exchange_mailbox_id', 'exchange_address_book_id',
+        'first_name', 'last_name', 'email', 'company_name'
+    ];
 
 
     /**
@@ -68,44 +71,8 @@ class ExchangeContact extends Model
      * |--------------------------------------------------------------------------
      * |
      */
-    public static function ewsContacts($client)
+    public static function ewsIndex($client, $contactBooks = [])
     {
-
-        // Build the request to list all Contact Address Books
-        $request = new \jamesiarmes\PhpEws\Request\FindFolderType();
-        $request->FolderShape = new \jamesiarmes\PhpEws\Type\FolderResponseShapeType();
-        $request->FolderShape->BaseShape = DefaultShapeNamesType::ALL_PROPERTIES;
-        $request->Traversal = FolderQueryTraversalType::DEEP;
-
-        $parent = new DistinguishedFolderIdType();
-        $parent->Id = DistinguishedFolderIdNameType::CONTACTS;
-        $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
-        $request->ParentFolderIds->DistinguishedFolderId[] = $parent;
-
-
-        $response = $client->FindFolder($request);
-        $response_messages = $response->ResponseMessages->FindFolderResponseMessage;
-        $contactBooks = [];
-        foreach ($response_messages as $response_message)
-        {
-            if ($response_message->ResponseClass != ResponseClassType::SUCCESS)
-                throw( new Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
-
-            foreach( $response_message->RootFolder->Folders->ContactsFolder AS $folder )
-            {
-                if( $folder->FolderClass == 'IPF.Contact' )
-                    $contactBooks[] = (object)[
-                        'ItemId'        => $folder->FolderId->Id,
-                        'ParentItemId'  => isset($folder->ParentFolderId) ? $folder->ParentFolderId->Id : null,
-                        'DisplayName'   => $folder->DisplayName,
-                        'FolderClass'   => $folder->FolderClass
-                    ];
-            }
-        }
-
-        echo print_r($contactBooks, 1); exit();
-
-
         // Build the request to list all Contacts on Contact Address Books
         $request = new FindItemType();
         $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
@@ -118,17 +85,22 @@ class ExchangeContact extends Model
         $request->Traversal = FolderQueryTraversalType::SHALLOW;
 
         // Find contacts in the contacts folder.
-        $folder_id = new DistinguishedFolderIdType();
-        $folder_id->Id = DistinguishedFolderIdNameType::CONTACTS;
-        $request->ParentFolderIds->DistinguishedFolderId[] = $folder_id;
-
-        if( count($contactBooks) > 0 )
+        if( count($contactBooks) > 0 ){
+            // Specified ItemId folders
             foreach( $contactBooks AS $contactBook )
             {
                 $folder_id = new \jamesiarmes\PhpEws\Type\FolderIdType();
-                $folder_id->Id = $contactBook->ItemId;
+                $folder_id->Id = $contactBook->item_id;
                 $request->ParentFolderIds->FolderId[] = $folder_id;
             }
+        }
+        else
+        {
+            // Default Root Address Book [CONTACTS]
+            $folder_id = new DistinguishedFolderIdType();
+            $folder_id->Id = DistinguishedFolderIdNameType::CONTACTS;
+            $request->ParentFolderIds->DistinguishedFolderId[] = $folder_id;
+        }
 
         $response = $client->FindItem($request);
 
@@ -151,8 +123,6 @@ class ExchangeContact extends Model
                 if( count($contacts) > 30 )
                     return $contacts;
             }
-
-            echo print_r($contacts, 1); exit();
         }
 
         return $contacts;
@@ -161,6 +131,9 @@ class ExchangeContact extends Model
 
     public static function ewsDetails($client, $ids)
     {
+        if( count($ids) == 0 )
+            return [];
+
         // Build the request.
         $request = new GetItemType();
         $request->ItemShape = new ItemResponseShapeType();

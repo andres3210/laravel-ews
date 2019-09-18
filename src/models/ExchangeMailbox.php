@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use andres3210\laraews\ExchangeClient;
 use andres3210\laraews\models\ExchangeFolder;
 use andres3210\laraews\models\ExchangeContact;
+use andres3210\laraews\models\ExchangeAddressBook;
 
 
 class ExchangeMailbox extends Model
@@ -130,26 +131,62 @@ class ExchangeMailbox extends Model
     }
 
 
-    public function syncContacts()
+    public function syncAddressBooks()
     {
         $exchange = $this->getExchangeConnection();
-        $contactIds = ExchangeContact::ewsContacts($exchange);
-        $contacts = ExchangeContact::ewsDetails($exchange, $contactIds);
+        $addressBooks = ExchangeAddressBook::ewsIndex($exchange);
 
-        foreach( $contacts AS $ewsContact )
+        foreach( $addressBooks AS $item )
         {
-            $existing = ExchangeContact::where([
-                'item_id' => base64_decode($ewsContact->item_id),
-                'exchange_mailbox_id' => $this->id
+            $existing = ExchangeAddressBook::where([
+                'item_id'               => base64_decode($item->item_id),
+                'exchange_mailbox_id'   => $this->id
             ])->first();
 
             if( !$existing )
-                ExchangeContact::create(array_merge(
+                ExchangeAddressBook::create(array_merge(
                     ['exchange_mailbox_id' => $this->id],
-                    (array)$ewsContact
+                    (array)$item
                 ));
             else
-                $existing->update((array)$ewsContact);
+                $existing->update((array)$item);
+
+        }
+    }
+
+
+    public function syncContacts($addressBook = null)
+    {
+        $exchange = $this->getExchangeConnection();
+
+        if( $addressBook != null )
+            $contactIds = ExchangeContact::ewsIndex($exchange, [$addressBook]);
+        else
+            $contactIds = ExchangeContact::ewsIndex($exchange);
+
+        $contacts = ExchangeContact::ewsDetails($exchange, $contactIds);
+        foreach( $contacts AS $ewsContact )
+        {
+            $search = [
+                'item_id' => base64_decode($ewsContact->item_id),
+                'exchange_mailbox_id' => $this->id
+            ];
+
+            $data = array_merge(['exchange_mailbox_id' => $this->id], (array)$ewsContact);
+            unset($data['parent_folder_id']);
+            if( $addressBook != null )
+            {
+                $data['exchange_address_book_id'] = $addressBook->id;
+                $search['exchange_address_book_id'] = $addressBook->id;
+            }
+
+
+            $existing = ExchangeContact::where($search)->first();
+            if( !$existing )
+                ExchangeContact::create($data);
+            else
+                $existing->update($data);
+
 
         }
     }
