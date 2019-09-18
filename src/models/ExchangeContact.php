@@ -9,6 +9,7 @@ use andres3210\laraews\models\ExchangeMailbox;
 use \jamesiarmes\PhpEws\Request\FindItemType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
 use \jamesiarmes\PhpEws\Request\CreateItemType;
+use \jamesiarmes\PhpEws\Request\DeleteItemType;
 
 use jamesiarmes\PhpEws\Type\FolderIdType;
 use \jamesiarmes\PhpEws\Type\ItemResponseShapeType;
@@ -16,11 +17,9 @@ use \jamesiarmes\PhpEws\Type\ContactsViewType;
 use \jamesiarmes\PhpEws\Type\DistinguishedFolderIdType;
 use \jamesiarmes\PhpEws\Type\ItemIdType;
 use \jamesiarmes\PhpEws\Type\ContactItemType;
-use \jamesiarmes\PhpEws\Type\PhoneNumberDictionaryType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryType;
-use \jamesiarmes\PhpEws\Type\ExtendedPropertyType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryEntryType;
-use \jamesiarmes\PhpEws\Type\CompleteNameType;
+
 
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
 use \jamesiarmes\PhpEws\Enumeration\DefaultShapeNamesType;
@@ -28,6 +27,9 @@ use \jamesiarmes\PhpEws\Enumeration\DistinguishedFolderIdNameType;
 use \jamesiarmes\PhpEws\Enumeration\ResponseClassType;
 use \jamesiarmes\PhpEws\Enumeration\EmailAddressKeyType;
 use \jamesiarmes\PhpEws\Enumeration\FileAsMappingType;
+use \jamesiarmes\PhpEws\Enumeration\DisposalType;
+use \jamesiarmes\PhpEws\Enumeration\CalendarItemCreateOrDeleteOperationType;
+
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
