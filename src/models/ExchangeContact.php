@@ -183,10 +183,15 @@ class ExchangeContact extends Model
         $request = new CreateItemType();
 
         // Save to specific Address Book
-        //$request->SavedItemFolderId = new \jamesiarmes\PhpEws\Type\TargetFolderIdType();
-        //$request->SavedItemFolderId->FolderId = new FolderIdType();
-        //$request->SavedItemFolderId->FolderId->Id = 'AAMkADEzYzdiMDU3LWE4ZmQtNGI3My1hNTViLTNkYTE4N2NhZThmMAAuAAAAAAABJesM8IQQSYrHtScgKiGmAQConzvlxVLxRagQBO9zQuhVAAJOZwiWAAA=';
+        if( $item->exchange_address_book_id != null )
+        {
+            $addressBook = ExchangeAddressBook::find($item->exchange_address_book_id);
+            $request->SavedItemFolderId = new \jamesiarmes\PhpEws\Type\TargetFolderIdType();
+            $request->SavedItemFolderId->FolderId = new FolderIdType();
+            $request->SavedItemFolderId->FolderId->Id = $addressBook->item_id;
+        }
 
+        // Define contact properties
         $contact = new ContactItemType();
         $contact->FileAsMapping = FileAsMappingType::FIRST_SPACE_LAST;
         $contact->GivenName = $item->first_name;

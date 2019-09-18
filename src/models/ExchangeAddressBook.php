@@ -24,8 +24,6 @@ class ExchangeAddressBook extends Model
 
     protected $fillable = ['item_id', 'parent_item_id', 'exchange_mailbox_id',  'name'];
 
-    protected $hidden = ['item_id', 'parent_item_id'];
-
     /**
      * |
      * |--------------------------------------------------------------------------
