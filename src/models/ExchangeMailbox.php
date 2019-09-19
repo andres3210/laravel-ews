@@ -161,7 +161,7 @@ class ExchangeMailbox extends Model
 
 
         $pagination = (object)[
-            'limit' => 500,
+            'limit' => 200,
             'offset' => 0
         ];
 
