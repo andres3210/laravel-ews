@@ -44,13 +44,21 @@ class ExchangeSyncContacts extends Command
      */
     public function handle()
     {
+        $mailboxes = ExchangeMailbox::all();
+        foreach($mailboxes AS $mailbox)
+        {
+            // First sync Root Address Book
+            echo $mailbox->email . ' >> Sync Root Address Book' . PHP_EOL;
+            $mailbox->syncContacts();
 
-        // dcohen Address book
-        $mailbox = ExchangeMailbox::findOrFail(7);
-        $addressBook = ExchangeAddressBook::whereId(2)
-            ->where('exchange_mailbox_id', '=', $mailbox->id)
-            ->first();
-        $mailbox->syncContacts($addressBook);
+            // Second - sync each sub-folder Address Books
+            $addressBooks = ExchangeAddressBook::where('exchange_mailbox_id', '=', $mailbox->id)->get();
+            foreach($addressBooks AS $addressBook)
+            {
+                echo $mailbox->email . ' >> Sync '.$addressBook->name.' Address Book' . PHP_EOL;
+                $mailbox->syncContacts($addressBook);
+            }
+        }
     }
 
 
