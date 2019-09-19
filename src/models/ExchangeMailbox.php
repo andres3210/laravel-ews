@@ -159,36 +159,52 @@ class ExchangeMailbox extends Model
     {
         $exchange = $this->getExchangeConnection();
 
-        if( $addressBook != null )
-            $contactIds = ExchangeContact::ewsIndex($exchange, [$addressBook]);
-        else
-            $contactIds = ExchangeContact::ewsIndex($exchange);
 
-        $contacts = ExchangeContact::ewsDetails($exchange, $contactIds);
-        foreach( $contacts AS $ewsContact )
+        $pagination = (object)[
+            'limit' => 500,
+            'offset' => 0
+        ];
+
+        while(true)
         {
-            $search = [
-                'item_id' => base64_decode($ewsContact->item_id),
-                'exchange_mailbox_id' => $this->id
-            ];
+            $response =  $addressBook != null ?
+                ExchangeContact::ewsIndex($exchange, [$addressBook], $pagination) :
+                ExchangeContact::ewsIndex($exchange, [], $pagination);
 
-            $data = array_merge(['exchange_mailbox_id' => $this->id], (array)$ewsContact);
-            unset($data['parent_folder_id']);
-            if( $addressBook != null )
+            $contacts = ExchangeContact::ewsDetails($exchange, $response->items);
+            foreach( $contacts AS $ewsContact )
             {
-                $data['exchange_address_book_id'] = $addressBook->id;
-                $search['exchange_address_book_id'] = $addressBook->id;
+                $search = [
+                    'item_id' => base64_decode($ewsContact->item_id),
+                    'exchange_mailbox_id' => $this->id
+                ];
+
+                $data = array_merge(['exchange_mailbox_id' => $this->id], (array)$ewsContact);
+                unset($data['parent_folder_id']);
+                if( $addressBook != null )
+                {
+                    $data['exchange_address_book_id'] = $addressBook->id;
+                    $search['exchange_address_book_id'] = $addressBook->id;
+                }
+
+                // Some contacts erroneously empty
+                if( $data['email'] == null )
+                    continue;
+
+                $existing = ExchangeContact::where($search)->first();
+                if( !$existing )
+                    ExchangeContact::create($data);
+                else
+                    $existing->update($data);
             }
 
-
-            $existing = ExchangeContact::where($search)->first();
-            if( !$existing )
-                ExchangeContact::create($data);
-            else
-                $existing->update($data);
-
-
+            $left = $response->totalItems - (count($response->items) + $pagination->offset);
+            echo $left . ' vs ' . $response->totalItems.  PHP_EOL;
+            if( $left <= 0)
+                break;
+            $pagination->offset += $pagination->limit;
         }
+
     }
 
 }

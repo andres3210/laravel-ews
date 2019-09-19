@@ -19,6 +19,7 @@ use \jamesiarmes\PhpEws\Type\ItemIdType;
 use \jamesiarmes\PhpEws\Type\ContactItemType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryEntryType;
+use \jamesiarmes\PhpEws\Type\IndexedPageViewType;
 
 
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
@@ -73,12 +74,26 @@ class ExchangeContact extends Model
      * |--------------------------------------------------------------------------
      * |
      */
-    public static function ewsIndex($client, $contactBooks = [])
+    public static function ewsIndex($client, $contactBooks = [], $pagination = null)
     {
         // Build the request to list all Contacts on Contact Address Books
         $request = new FindItemType();
         $request->ParentFolderIds = new NonEmptyArrayOfBaseFolderIdsType();
         $request->ContactsView = new ContactsViewType();
+
+
+        // Handle pagination
+        $request->IndexedPageItemView = new IndexedPageViewType();
+        $request->IndexedPageItemView->BasePoint = 'Beginning';
+        $request->IndexedPageItemView->MaxEntriesReturned = 200;
+        $request->IndexedPageItemView->Offset = 0;
+        if($pagination != null)
+        {
+            $request->IndexedPageItemView->MaxEntriesReturned = $pagination->limit;
+            $request->IndexedPageItemView->Offset = $pagination->offset;
+        }
+
+
 
         // Return all message properties.
         $request->ItemShape = new ItemResponseShapeType();
@@ -118,16 +133,20 @@ class ExchangeContact extends Model
 
             // Iterate over the contacts that were found, printing the id of each.
             $items = $response_message->RootFolder->Items->Contact;
-            foreach ($items as $item)
-            {
+            foreach ($items as $item){
                 $contacts[] = $item->ItemId->Id;
-
-                if( count($contacts) > 30 )
-                    return $contacts;
             }
+
+            return (object)[
+                'items'         => $contacts,
+                'totalItems'    => isset($response_message->RootFolder->TotalItemsInView) ?
+                    $response_message->RootFolder->TotalItemsInView : count($contacts),
+                'offset'        => isset($response_message->RootFolder->NumeratorOffset) ?
+                    $response_message->RootFolder->NumeratorOffset : 0
+            ];
         }
 
-        return $contacts;
+        return [];
     }
 
 
