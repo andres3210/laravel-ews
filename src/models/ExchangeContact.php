@@ -10,6 +10,7 @@ use \jamesiarmes\PhpEws\Request\FindItemType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
 use \jamesiarmes\PhpEws\Request\CreateItemType;
 use \jamesiarmes\PhpEws\Request\DeleteItemType;
+use \jamesiarmes\PhpEws\Request\UpdateItemType;
 
 use jamesiarmes\PhpEws\Type\FolderIdType;
 use \jamesiarmes\PhpEws\Type\ItemResponseShapeType;
@@ -20,6 +21,9 @@ use \jamesiarmes\PhpEws\Type\ContactItemType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryType;
 use \jamesiarmes\PhpEws\Type\EmailAddressDictionaryEntryType;
 use \jamesiarmes\PhpEws\Type\IndexedPageViewType;
+use \jamesiarmes\PhpEws\Type\ItemChangeType;
+use \jamesiarmes\PhpEws\Type\SetItemFieldType;
+use \jamesiarmes\PhpEws\Type\PathToIndexedFieldType;
 
 
 use \jamesiarmes\PhpEws\Enumeration\FolderQueryTraversalType;
@@ -30,10 +34,13 @@ use \jamesiarmes\PhpEws\Enumeration\EmailAddressKeyType;
 use \jamesiarmes\PhpEws\Enumeration\FileAsMappingType;
 use \jamesiarmes\PhpEws\Enumeration\DisposalType;
 use \jamesiarmes\PhpEws\Enumeration\CalendarItemCreateOrDeleteOperationType;
+use \jamesiarmes\PhpEws\Enumeration\ConflictResolutionType;
+use \jamesiarmes\PhpEws\Enumeration\DictionaryURIType;
 
 
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseFolderIdsType;
 use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfBaseItemIdsType;
+use \jamesiarmes\PhpEws\ArrayType\NonEmptyArrayOfItemChangeDescriptionsType;
 
 
 
@@ -323,6 +330,8 @@ class ExchangeContact extends Model
             foreach ($response_message->Items->Contact as $item)
                 return $item->ItemId->Id;
         }
+
+        return false;
     }
 
 
