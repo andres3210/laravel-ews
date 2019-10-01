@@ -204,7 +204,7 @@ class ExchangeContact extends Model
         $request = new CreateItemType();
 
         // Save to specific Address Book
-        if( $item->exchange_address_book_id != null )
+        if( isset($item->exchange_address_book_id) && $item->exchange_address_book_id != null )
         {
             $addressBook = ExchangeAddressBook::find($item->exchange_address_book_id);
             $request->SavedItemFolderId = new \jamesiarmes\PhpEws\Type\TargetFolderIdType();
