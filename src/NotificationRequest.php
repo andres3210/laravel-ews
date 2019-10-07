@@ -21,7 +21,11 @@ class NotificationRequest {
                 $subscription = ExchangeSubscription::where('item_id', '=', base64_decode($subscriptionId))->first();
 
                 if($subscription)
+                {
+                    $subscription->touch();
                     $res = $subscription->handle($args->ResponseMessages->SendNotificationResponseMessage);
+                }
+
             }
         }
 
