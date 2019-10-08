@@ -12,6 +12,7 @@ use \jamesiarmes\PhpEws\Request\DeleteItemType;
 use \jamesiarmes\PhpEws\Request\FindFolderType;
 use \jamesiarmes\PhpEws\Request\GetItemType;
 use \jamesiarmes\PhpEws\Request\MoveItemType;
+use \jamesiarmes\PhpEws\Request\CopyItemType;
 use \jamesiarmes\PhpEws\Request\SubscribeType;
 use \jamesiarmes\PhpEws\Request\FindItemType;
 use \jamesiarmes\PhpEws\Request\CreateItemType;
@@ -531,6 +532,41 @@ class ExchangeClient extends Client {
             }
 
             //print_r($response);
+            throw(new Exception('Exchange EWS Move Item Error >> ' . $node->ResponseCode . ': '. $node->MessageText));
+        }
+
+        return false;
+    }
+
+
+    public function copyEmailItem($id, $folderId)
+    {
+        $request = new CopyItemType();
+
+        $request->ToFolderId = new NonEmptyArrayOfBaseFolderIdsType();
+        $request->ToFolderId->FolderId = new FolderIdType();
+        $request->ToFolderId->FolderId->Id = $folderId;
+
+        $request->ItemIds = new NonEmptyArrayOfBaseItemIdsType();
+        $request->ItemIds->ItemId = new ItemIdType();
+        $request->ItemIds->ItemId->Id = $id;
+
+        // Generic execution sample code
+        $response = $this->CopyItem($request);
+
+        if( isset($response->ResponseMessages) && isset($response->ResponseMessages->CopyItemResponseMessage) && isset($response->ResponseMessages->CopyItemResponseMessage[0]) ){
+            $node = $response->ResponseMessages->CopyItemResponseMessage[0];
+
+            if( isset($node->ResponseClass) && $node->ResponseClass == ResponseClassType::SUCCESS ){
+                if( isset($node->Items) && isset($node->Items->Message) && isset($node->Items->Message[0]) )
+                    return $node->Items->Message[0]->ItemId;
+
+                // Lost item id (know bug while moving between mailboxes)
+                return (object)[
+                    'Id' => ''
+                ];
+            }
+
             throw(new Exception('Exchange EWS Move Item Error >> ' . $node->ResponseCode . ': '. $node->MessageText));
         }
 

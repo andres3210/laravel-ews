@@ -16,6 +16,15 @@ class ExchangeItem extends Model
         'subject', 'from', 'to', 'cc', 'bcc', 'body', 'attachment', 'created_at'
     ];
 
+
+
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Accessors and Mutators
+    |--------------------------------------------------------------------------
+    |
+     */
     public function getBodyAttribute($value)
     {
         try {
@@ -32,8 +41,6 @@ class ExchangeItem extends Model
     }
 
 
-
-
     public function setBodyAttribute($value)
     {
         $this->attributes['body'] = gzencode($value);
@@ -45,6 +52,28 @@ class ExchangeItem extends Model
     }
 
 
+    /**
+    |
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    |
+     */
+    public function mailbox()
+    {
+        return $this->belongsTo('andres3210\laraews\models\ExchangeMailbox', 'exchange_mailbox_id', 'id');
+    }
+
+
+    /**
+     * Get assignated connection to this folder
+     *
+     * @return ExchangeClient
+     */
+    public function getExchangeConnection()
+    {
+        return $this->mailbox->getExchangeConnection();
+    }
 
 
 
@@ -83,12 +112,13 @@ class ExchangeItem extends Model
         if( !$folder || $folder->id == $this->exchange_folder_id )
             return false;
 
-        $exchange = new ExchangeClient();
+        $exchange = $this->getExchangeConnection();
 
-        try{
-            echo 'attempt move';
+        try
+        {
             $moveResult = $exchange->moveEmailItem($this->item_id, $folder->item_id);
-            if( $moveResult ){
+            if( $moveResult )
+            {
                 $this->item_id = $moveResult->Id;
                 $this->exchange_folder_id = $folder->id;
                 $this->save();
@@ -97,11 +127,37 @@ class ExchangeItem extends Model
         }catch( Exception $e ){
             echo ' - move error -';
             print_r( $e->getMessage() );
-            //$this->delete();
             exit();
         }
 
         return false;
+    }
+
+
+    public function copyToFolder($id)
+    {
+        $folder = ExchangeFolder::findOrFail($id);
+        $exchange = $this->getExchangeConnection();
+        try
+        {
+            $result = $exchange->copyEmailItem($this->item_id, $folder->item_id);
+            if( $result )
+            {
+                $cpItem = self::create(array_merge(
+                    [
+                        'item_id' => $result->Id,
+                        'exchange_folder_id' => $folder->id,
+                        'exchange_mailbox_id' => $folder->exchange_mailbox_id
+                    ],
+                    collect($this->toArray())->except(['id', 'item_id', 'exchange_folder_id', 'exchange_mailbox_id'])->toArray()
+                ));
+                return true;
+            }
+        }catch( Exception $e ){
+            echo ' - move error -';
+            print_r( $e->getMessage() );
+            exit();
+        }
     }
 
 }
