@@ -114,8 +114,7 @@ class ExchangeItem extends Model
 
         $exchange = $this->getExchangeConnection();
 
-        try
-        {
+        try {
             $moveResult = $exchange->moveEmailItem($this->item_id, $folder->item_id);
             if( $moveResult )
             {
@@ -138,8 +137,7 @@ class ExchangeItem extends Model
     {
         $folder = ExchangeFolder::findOrFail($id);
         $exchange = $this->getExchangeConnection();
-        try
-        {
+        try {
             $result = $exchange->copyEmailItem($this->item_id, $folder->item_id);
             if( $result )
             {
@@ -151,7 +149,8 @@ class ExchangeItem extends Model
                     ],
                     collect($this->toArray())->except(['id', 'item_id', 'exchange_folder_id', 'exchange_mailbox_id'])->toArray()
                 ));
-                return true;
+
+                return $cpItem;
             }
         }catch( Exception $e ){
             echo ' - move error -';
