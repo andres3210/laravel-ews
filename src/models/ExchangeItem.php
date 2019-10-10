@@ -64,6 +64,11 @@ class ExchangeItem extends Model
         return $this->belongsTo('andres3210\laraews\models\ExchangeMailbox', 'exchange_mailbox_id', 'id');
     }
 
+    public function references()
+    {
+        return $this->hasMany('andres3210\laraews\models\ExchangeItemReference', 'exchange_item_id');
+    }
+
 
     /**
      * Get assignated connection to this folder
@@ -81,6 +86,9 @@ class ExchangeItem extends Model
     {
         $this->hash = $this->getHash();
         parent::save();
+
+        // After save, primary id should be available
+        $this->extractForeignEmailAddresses();
     }
 
     public function getHash(){
@@ -157,6 +165,72 @@ class ExchangeItem extends Model
             print_r( $e->getMessage() );
             exit();
         }
+    }
+
+
+
+    public static function extractEmailAddresses($string)
+    {
+        $pattern = '/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}/';
+        preg_match_all($pattern, $string, $aMatch);
+        return isset($aMatch[0]) ? $aMatch[0] : [];
+    }
+
+
+    public function extractForeignEmailAddresses()
+    {
+        // Result array
+        $foreignEmails = [];
+
+
+        // Extract Mailbox domain to exclude internal email addresses detection
+        $domain = explode('@', $this->mailbox()->first()->email)[1];
+
+
+        // Build routing emails array (for exclusion)
+        $routingEmails = [];
+        $fields = ['to', 'from', 'cc', 'bcc'];
+        foreach( $fields AS $field )
+        {
+            $tmp = self::extractEmailAddresses($this->{$field});
+            $routingEmails = array_merge($routingEmails, $tmp);
+        }
+
+
+        // Build emails found in body text and pass to result set
+        $bodyEmails = self::extractEmailAddresses($this->body);
+        foreach($bodyEmails AS $email)
+        {
+            if( !in_array($email, $routingEmails) && !in_array($email, $foreignEmails) && strpos($email, $domain) === false )
+                $foreignEmails[] = $email;
+        }
+
+
+        // Build emails found in subject text
+        $subjectEmails = self::extractEmailAddresses($this->subject);
+        foreach($subjectEmails AS $email)
+        {
+            if( !in_array($email, $routingEmails) && !in_array($email, $foreignEmails) && strpos($email, $domain) === false  )
+                $foreignEmails[] = $email;
+        }
+
+        // Sync to database
+        if( count($foreignEmails) > 0 )
+        {
+            $this->references()->whereType(ExchangeItemReference::TYPE_FOREIGN_EMAIL)->delete();
+
+            $buff = [];
+            foreach($foreignEmails AS $email)
+                $buff[] = [
+                    'type'  => ExchangeItemReference::TYPE_FOREIGN_EMAIL,
+                    'value' => $email
+                ];
+
+            if( isset($this->id)  && $this->id != null)
+                $this->references()->createMany($buff);
+        }
+
+        return $foreignEmails;
     }
 
 }
