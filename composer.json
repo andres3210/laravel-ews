@@ -1,5 +1,5 @@
 {
-    "name": "andres3210/laraews",
+    "name": "andres3210/laravel-ews",
     "description": "Unified API to EWS",
     "type": "library",
     "license": "Open source GPL",
@@ -13,7 +13,7 @@
     "minimum-stability": "dev",
     "autoload": {
       "psr-4": {
-        "andres3210\\laraews\\": "src/"
+        "andres3210\\laravel-ews\\": "src/"
       }
     }
 }
