@@ -106,7 +106,6 @@ class ExchangeFolder extends Model
 
                 $search['dateTo']   = $status_data->needleDate;
                 $search['limit']    = 1000;
-                //$search['limit']    = 10;
                 break;
 
             case 'last':
@@ -147,7 +146,7 @@ class ExchangeFolder extends Model
                 $downloadBody = false;
         }
 
-        //echo print_r($search, 1);
+        echo 'Search: '.print_r($search, 1);
 
         $items = $exchange->getFolderItems($this->item_id, $search);
 
