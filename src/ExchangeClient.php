@@ -476,7 +476,7 @@ class ExchangeClient extends Client {
                     'ConversationId' => $email->ConversationId->Id, // ALL_PROPERTIES
                     'InternetMessageId' => $email->InternetMessageId,
                     'ParentFolderId' => $email->ParentFolderId->Id, // ALL_PROPERTIES
-                    'Headers' => $headers
+                    'Header' => $headers
                 ];
 
                 if( isset($email->ToRecipients) && isset($email->ToRecipients->Mailbox) )

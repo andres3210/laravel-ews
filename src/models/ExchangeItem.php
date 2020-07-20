@@ -8,13 +8,21 @@ use andres3210\laraews\models\ExchangeFolder;
 use andres3210\laraews\ExchangeClient;
 use Mockery\CountValidator\Exception;
 
+use App\Library\SPFValidate;
+
 class ExchangeItem extends Model
 {
 
     protected $fillable = [
         'item_id', 'exchange_mailbox_id', 'exchange_folder_id', 'message_id',
-        'subject', 'from', 'to', 'cc', 'bcc', 'body', 'attachment', 'created_at'
+        'subject', 'from', 'to', 'cc', 'bcc', 'header', 'body', 'attachment', 
+        'internal_impersonated', 'spoof_detected',
+        'created_at'
     ];
+
+    protected $hidden = ['item_id', 'message_id', 'hash', 'header'];
+
+
 
 
 
@@ -31,13 +39,26 @@ class ExchangeItem extends Model
             return gzdecode($value);
         }
         catch(Exception $e){
-            return 'invalid';
+            return 'invalid body gzip encoding';
         }
     }
 
     public function getItemIdAttribute($value)
     {
         return base64_encode($value);
+    }
+
+    public function getHeaderAttribute($value)
+    {
+        if( is_null($value) )
+            return $value;
+
+        try {
+            return json_decode(gzdecode($value));
+        }
+        catch(Exception $e){
+            return 'invalid header blob gzip encoding';
+        }
     }
 
 
@@ -50,6 +71,12 @@ class ExchangeItem extends Model
     {
         $this->attributes['item_id'] = base64_decode($value);
     }
+
+    public function setHeaderAttribute($value)
+    {
+        $this->attributes['header'] = gzencode(json_encode($value));
+    }
+
 
 
     /**
@@ -177,6 +204,15 @@ class ExchangeItem extends Model
     }
 
 
+    /**
+     * This method lists all emails contained inside the EmailItem
+     * - to, from, cc, bcc (if available)
+     * - body mentions
+     * 
+     * Results are stored as EmailItemReference
+     * 
+     * Note: it excludes all email from the same domain as owner (i.e. owner@canadavisa.com)
+     */
     public function extractForeignEmailAddresses()
     {
         // Result array
@@ -231,6 +267,37 @@ class ExchangeItem extends Model
         }
 
         return $foreignEmails;
+    }
+
+
+    public function extractSenderServer()
+    {
+        $exchangeInternalHostName = 'WIN-MKUPUNREHLI.canadavisadev.local';
+
+        if( isset($this->header->Received) )
+        {
+            $emailDomain = explode('@', $this->from)[1];
+            // look for first header containing email-domain.local
+            for( $i = count($this->header->Received) - 1; $i >= 0; $i-- )
+            {
+                if(strpos($this->header->Received[$i], $exchangeInternalHostName) !== false )
+                {
+                    $parts = explode($exchangeInternalHostName, $this->header->Received[$i]);
+                    $sender = explode(' ', str_replace(['from ', ' by'], '', $parts[0]));
+                    $senderObj = (object)[
+                        'server'    => $sender[0],
+                        'domain'    => $emailDomain,
+                        'ip'        => str_replace(['(',')'], '', $sender[1]),
+                        'spf'       => null
+                    ];
+                    $senderObj->spf = SPFValidate::isAllowed($senderObj->ip, $emailDomain);
+
+                    return $senderObj;
+                }
+            }
+
+            return null;
+        }
     }
 
 }
