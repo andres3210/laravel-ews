@@ -25,7 +25,6 @@ class NotificationRequest {
                     $subscription->touch();
                     $res = $subscription->handle($args->ResponseMessages->SendNotificationResponseMessage);
                 }
-
             }
         }
 

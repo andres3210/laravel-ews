@@ -812,7 +812,7 @@ class ExchangeClient extends Client {
     }
 
 
-    public function subscribePushNotifications($callbackUri, $callback, $mailbox = null)
+    public function subscribePushNotifications($callbackUri, $mailbox = null)
     {
         $request = new SubscribeType();
 
@@ -850,7 +850,6 @@ class ExchangeClient extends Client {
                 // Register Subscription
                 $laraewsSubscription = ExchangeSubscription::create([
                     'item_id'               => $subscription->SubscriptionId,
-                    'callback'              => $callback,
                     'expire_on'             => null,
                     'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
                     'keep_alive'            => 120,

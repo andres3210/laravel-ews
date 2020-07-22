@@ -3,6 +3,7 @@
 namespace andres3210\laraews\models;
 
 use Illuminate\Database\Eloquent\Model;
+use andres3210\laraews\jobs\ProcessItemNotificationJob;
 
 class ExchangeSubscription extends Model
 {
@@ -59,8 +60,8 @@ class ExchangeSubscription extends Model
             return false;
         }
 
-        if( $this->callback == null || function_exists($this->callback))
-            return false;
+        //if( $this->callback == null || function_exists($this->callback))
+        //    return false;
 
 
         $eventTypes = [
@@ -96,7 +97,12 @@ class ExchangeSubscription extends Model
             }
         }
 
-        // Invoke Function on Subscription
-        return call_user_func( $this->callback, $events, $this->mailbox->getExchangeConnection() );
+        // Invoke Function on Subscription (old)
+        //return call_user_func( $this->callback, $events, $this->mailbox->getExchangeConnection() );
+        
+        // Standard Job to Download Items
+        ProcessItemNotificationJob::pushJob($events, $this->mailbox->getExchangeConnection());
+
+        return true;
     }
 }
