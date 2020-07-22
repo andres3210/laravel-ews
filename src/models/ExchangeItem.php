@@ -23,9 +23,6 @@ class ExchangeItem extends Model
     protected $hidden = ['item_id', 'message_id', 'hash', 'header'];
 
 
-
-
-
     /**
     |
     |--------------------------------------------------------------------------
@@ -272,11 +269,13 @@ class ExchangeItem extends Model
 
     public function extractSenderServer()
     {
+        // @todo - Get server name from mailbox table or config file
         $exchangeInternalHostName = 'WIN-MKUPUNREHLI.canadavisadev.local';
 
         if( isset($this->header->Received) )
         {
             $emailDomain = explode('@', $this->from)[1];
+
             // look for first header containing email-domain.local
             for( $i = count($this->header->Received) - 1; $i >= 0; $i-- )
             {
@@ -284,13 +283,17 @@ class ExchangeItem extends Model
                 {
                     $parts = explode($exchangeInternalHostName, $this->header->Received[$i]);
                     $sender = explode(' ', str_replace(['from ', ' by'], '', $parts[0]));
+
+                    $senderIP = str_replace(['(',')'], '', $sender[1]);
+
                     $senderObj = (object)[
                         'server'    => $sender[0],
                         'domain'    => $emailDomain,
-                        'ip'        => str_replace(['(',')'], '', $sender[1]),
+                        'ip'        => $senderIP,
                         'spf'       => null
                     ];
-                    $senderObj->spf = SPFValidate::isAllowed($senderObj->ip, $emailDomain);
+                    
+                    $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
 
                     return $senderObj;
                 }
