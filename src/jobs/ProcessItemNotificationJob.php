@@ -127,9 +127,7 @@ class ProcessItemNotificationJob extends Job
 
                     $insertedIds[] = $ewsItem->id;
                 }
-
-                // Handle Internal Jobs
-                // dispatch(new PushNotificationJob($insertedIds));
+                
             }
             catch(Exception $e){
                 echo $e->getMessage() . PHP_EOL;

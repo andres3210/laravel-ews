@@ -60,10 +60,6 @@ class ExchangeSubscription extends Model
             return false;
         }
 
-        //if( $this->callback == null || function_exists($this->callback))
-        //    return false;
-
-
         $eventTypes = [
             'CreatedEvent',
             'DeletedEvent',
@@ -97,12 +93,25 @@ class ExchangeSubscription extends Model
             }
         }
 
-        // Invoke Function on Subscription (old)
-        //return call_user_func( $this->callback, $events, $this->mailbox->getExchangeConnection() );
-        
         // Standard Job to Download Items
         ProcessItemNotificationJob::pushJob($events, $this->mailbox->getExchangeConnection());
+        
+        // Custom Callback 
+        //echo 'Attempt to notify callback ' . $this->callback . PHP_EOL;
+        if( !empty($this->callback) )
+        {
+            try {
+                if( @eval( $this->callback . "; return true;") !== true )
+                    throw( new \Exception('Invalid App Function') );
+                
+                eval( $this->callback . ';');
+            } 
+            catch (\Exception $e) {
+                //echo $e->getMessage();
+            }
+        }
 
+        // Keep subscription alive
         return true;
     }
 }

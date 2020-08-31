@@ -79,7 +79,8 @@ class ExchangeFolder extends Model
      * last mode
      *  scans last month of email items
      */
-    public function syncExchange( $mode = 'last', $params = null ){
+    public function syncExchange( $mode = 'last', $params = null )
+    {
         $exchange = $this->getExchangeConnection();
 
         $search = [];
