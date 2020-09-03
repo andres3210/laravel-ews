@@ -61,6 +61,9 @@ class ProcessItemNotificationJob extends Job
                 {
                     $folder = ExchangeFolder::where('item_id', '=', base64_decode($email->ParentFolderId))->first();
 
+                    if( !$folder )
+                        Log::warning('Unable to map folder id: ' . $email->ParentFolderId);
+                    
                     $ewsItem = new ExchangeItem([
                         'item_id'               => $email->ItemId,
                         'exchange_folder_id'    => $folder ? $folder->id : null,
