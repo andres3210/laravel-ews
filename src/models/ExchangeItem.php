@@ -2,6 +2,8 @@
 
 namespace andres3210\laraews\models;
 
+// Laravel Classes
+use Log;
 use Illuminate\Database\Eloquent\Model;
 
 use andres3210\laraews\models\ExchangeFolder;
@@ -215,10 +217,14 @@ class ExchangeItem extends Model
         // Result array
         $foreignEmails = [];
 
-
         // Extract Mailbox domain to exclude internal email addresses detection
-        $domain = explode('@', $this->mailbox()->first()->email)[1];
+        if( empty($this->exchange_mailbox_id) )
+        {
+            Log::error('Unable to load mailbox info' . $this->exchange_mailbox_id );
+            return $foreignEmails;
+        }
 
+        $domain = explode('@', $this->mailbox()->first()->email)[1];
 
         // Build routing emails array (for exclusion)
         $routingEmails = [];
@@ -269,8 +275,25 @@ class ExchangeItem extends Model
 
     public function extractSenderServer()
     {
-        // @todo - Get server name from mailbox table or config file
-        $exchangeInternalHostName = 'WIN-MKUPUNREHLI.canadavisadev.local';
+        // Extract Mailbox domain to exclude internal email addresses detection
+        if( empty($this->exchange_mailbox_id) )
+        {
+            Log::error('Unable to load mailbox info' . $this->exchange_mailbox_id );
+            return;
+        }
+
+        $mailbox = $this->mailbox()->first();
+        $ews_connection = $mailbox->ews_connection;
+
+        $config = $ews_connection != null ? config('exchange.connections.'.$ews_connection) : 
+            config('exchange.connections.'.config('exchange.default'));
+
+        $local_domains = [];
+        if( !isset($config['local_domains']) )
+            return;
+
+        $local_domains = $config['local_domains'];
+
 
         if( isset($this->header->Received) )
         {
@@ -279,25 +302,30 @@ class ExchangeItem extends Model
             // look for first header containing email-domain.local
             for( $i = count($this->header->Received) - 1; $i >= 0; $i-- )
             {
-                if(strpos($this->header->Received[$i], $exchangeInternalHostName) !== false )
+                foreach( $local_domains AS $local_domain )
                 {
-                    $parts = explode($exchangeInternalHostName, $this->header->Received[$i]);
-                    $sender = explode(' ', str_replace(['from ', ' by'], '', $parts[0]));
-
-                    $senderIP = str_replace(['(',')'], '', $sender[1]);
-
-                    $senderObj = (object)[
-                        'server'    => $sender[0],
-                        'domain'    => $emailDomain,
-                        'ip'        => $senderIP,
-                        'spf'       => null
-                    ];
-                    
-                    $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
-
-                    return $senderObj;
+                    if(strpos($this->header->Received[$i], $local_domain) !== false )
+                    {
+                        $parts = explode($local_domain, $this->header->Received[$i]);
+                        $sender = explode(' ', str_replace(['from ', ' by'], '', $parts[0]));
+    
+                        $senderIP = str_replace(['(',')'], '', $sender[1]);
+    
+                        $senderObj = (object)[
+                            'server'    => $sender[0],
+                            'domain'    => $emailDomain,
+                            'ip'        => $senderIP,
+                            'spf'       => null
+                        ];
+                        
+                        $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
+    
+                        return $senderObj;
+                    }
                 }
+                // End loop each local_domain   
             }
+            // End loop each header
 
             return null;
         }
