@@ -40,7 +40,33 @@ class ProcessItemNotificationJob extends Job
         $ids = [];
 
         if( isset($this->items['MovedEvent']) ) 
+        {
             echo 'Moved >> ' . count($this->items['MovedEvent']) . PHP_EOL;
+            foreach($this->items['MovedEvent'] AS $item)
+            {
+                // echo print_r($item, 1);
+                if( isset($item->ItemId) && isset($item->ItemId->Id) && isset($item->OldItemId) && isset($item->OldItemId->Id) )
+                {
+                    $existingItem = ExchangeItem::where('item_id', base64_decode($item->OldItemId->Id))
+                        ->first();
+                    
+                    if( $existingItem )
+                    {
+                        echo 'found';
+                        $existingItem->item_id = $item->ItemId->Id;
+                        $existingItem->save();
+                    }
+                    // Queue for new download
+                    else
+                    {
+                        echo 'not found - download it ' . $item->ItemId->Id . PHP_EOL;
+                        $ids[] = $item->ItemId->Id;
+                    }
+                }
+            }
+        }
+            
+
         
         if( isset($this->items['CreatedEvent']) )
         {

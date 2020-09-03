@@ -856,7 +856,7 @@ class ExchangeClient extends Client {
         $request = new SubscribeType();
 
         $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
-        $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent'];
+        $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent', 'MovedEvent', 'CopiedEvent'];
 
         // Get Main Folder ID
         $folder_id = new NonEmptyArrayOfBaseFolderIdsType();
