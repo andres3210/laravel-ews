@@ -381,7 +381,7 @@ class ExchangeItem extends Model
             return;
 
         $fromDomain = explode('@', $this->from)[1];
-        
+
         if( $fromDomain == $config['main_domain'] && isset($config['external_mail_servers']) )
         {  
             $senderServer = $this->extractSenderServer(false);
@@ -393,10 +393,24 @@ class ExchangeItem extends Model
                 }
                     
         }
-        else {   
-            $senderServer = $this->extractSenderServer(true);
-            if( $senderServer != null && isset($senderServer->server) )
+        else {
+
+            // Dont bother to check for DNS SFP records if headers from our authrized services is detected
+            $spoofed_in_purpose = false;
+            $senderServer = $this->extractSenderServer(false);
+            foreach( $config['external_mail_servers'] AS $whitelisted )
+                if( strpos( $senderServer->server, $whitelisted) )
+                    $spoofed_in_purpose = true;
+            
+            if( $spoofed_in_purpose )
             {
+                $this->spoof_detected = true;
+                $this->internal_impersonated = true;
+            }
+            else
+            {
+                // Validate if someone ilegit emails are spoofing email addressess
+                $senderServer = $this->extractSenderServer(true);
                 if( $senderServer->spf !== true )
                 {
                     //echo 'External Email Spoof Detected' . PHP_EOL;
