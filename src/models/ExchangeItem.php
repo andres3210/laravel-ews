@@ -273,13 +273,17 @@ class ExchangeItem extends Model
     }
 
 
-    public function extractSenderServer()
+    public function extractSenderServer( $validate_sfp = false )
     {
         // Extract Mailbox domain to exclude internal email addresses detection
         if( empty($this->exchange_mailbox_id) )
         {
             Log::error('Unable to load mailbox info' . $this->exchange_mailbox_id );
-            return;
+            return (object)[
+                'server'    => '',
+                'domain'    => '',
+                'ip'        => ''
+            ];
         }
 
         $mailbox = $this->mailbox()->first();
@@ -290,10 +294,13 @@ class ExchangeItem extends Model
 
         $local_domains = [];
         if( !isset($config['local_domains']) )
-            return;
+            return (object)[
+                'server'    => '',
+                'domain'    => '',
+                'ip'        => ''
+            ];
 
         $local_domains = $config['local_domains'];
-
 
         if( isset($this->header->Received) )
         {
@@ -314,11 +321,11 @@ class ExchangeItem extends Model
                         $senderObj = (object)[
                             'server'    => $sender[0],
                             'domain'    => $emailDomain,
-                            'ip'        => $senderIP,
-                            'spf'       => null
+                            'ip'        => $senderIP
                         ];
                         
-                        $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
+                        if( $validate_sfp )
+                            $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
     
                         return $senderObj;
                     }
@@ -326,9 +333,82 @@ class ExchangeItem extends Model
                 // End loop each local_domain   
             }
             // End loop each header
-
-            return null;
         }
+
+        return (object)[
+            'server'    => '',
+            'domain'    => '',
+            'ip'        => ''
+        ];
+    }
+
+    /**
+     * -- Spoof Detected
+     * If we detect a server that is not allowed to send on behalf of the domain
+     * then, mark is as spoofed.
+     *  - i.e.: Amazon sever send and email on behalf of abc@gmail.com
+     *          but Amazon Server is not allowed to send on the SPF-Records
+     * 
+     * -- Internal Impersonated
+     * If we detect an Local Domain (canadavisa.com) item being sent from an External Service
+     * then, mark it as internal_impersonated
+     * 
+     * - i.e.: Amazon server is on the SPF-Records of Canadavis.com and sends an item to 
+     *         a mailbox on the Exchange, then this item will be mark as internal_impersonated
+     *         as it was not sent from the Exchange server
+     */
+    public function extractSpoofAndInternalFlags()
+    {
+       
+        $this->spoof_detected = false;
+        $this->internal_impersonated = false;
+
+        // Extract Mailbox domain to exclude internal email addresses detection
+        if( empty($this->exchange_mailbox_id) )
+        {
+            Log::error('Unable to load mailbox info' . $this->exchange_mailbox_id );
+            return;
+        }
+
+        $mailbox = $this->mailbox()->first();
+        $ews_connection = $mailbox->ews_connection;
+
+        $config = $ews_connection != null ? config('exchange.connections.'.$ews_connection) : 
+            config('exchange.connections.'.config('exchange.default'));
+
+        $local_domains = [];
+        if( !isset($config['local_domains']) || !isset($config['main_domain']) )
+            return;
+
+        $fromDomain = explode('@', $this->from)[1];
+        
+        if( $fromDomain == $config['main_domain'] && isset($config['external_mail_servers']) )
+        {  
+            $senderServer = $this->extractSenderServer(false);
+            foreach( $config['external_mail_servers'] AS $whitelisted )
+                if( strpos( $senderServer->server, $whitelisted) )
+                {
+                    //echo 'Internal Email - Sent form external service' . PHP_EOL;
+                    $this->internal_impersonated = true;
+                }
+                    
+        }
+        else {   
+            $senderServer = $this->extractSenderServer(true);
+            if( $senderServer != null && isset($senderServer->server) )
+            {
+                if( $senderServer->spf !== true )
+                {
+                    //echo 'External Email Spoof Detected' . PHP_EOL;
+                    $this->spoof_detected = true;
+                }
+            }
+        }
+
+        return [
+            'spoof_detected'        => $this->spoof_detected,
+            'internal_impersonated' => $this->internal_impersonated
+        ];
     }
 
 }

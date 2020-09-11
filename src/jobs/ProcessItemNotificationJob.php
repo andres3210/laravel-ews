@@ -106,51 +106,8 @@ class ProcessItemNotificationJob extends Job
                         //'in_reply_to'   => $email->ConversationId,
                     ]);
 
-                    // Init Vars
-                    $ewsItem->internal_impersonated = false;
-                    $ewsItem->spoof_detected = false;
-
-                    // Extract email domain
-                    $fromDomain = explode('@', $ewsItem->from)[1];
-                    echo 'Domain From - ' . $fromDomain . PHP_EOL;
-
-                    // @todo - internal domains to config file
-                    $internalDomains = [
-                        'canadavisa.com',
-                        'canadavisadev.com'
-                    ];
-
-                    if( !in_array($fromDomain, $internalDomains) )
-                    {
-                        $senderServer = $ewsItem->extractSenderServer();
-                        echo print_r(['info' => $senderServer], 1);
-
-                        if( $senderServer != null && isset($senderServer->server) )
-                        {
-                            if( $senderServer->spf !== true )
-                            {
-                                echo 'Spoof Detected' . PHP_EOL;
-
-                                // @todo - load allowed spoofing domains allowed to config file
-                                // validate spoofing and internal 
-                                $allowedInternalSpoofing = [
-                                    'sendgrid.canadavisa.com', 'canadavisa.com',
-                                    'sendgrid.com', 'mailgun.net'
-                                ];
-                                
-                                $internal = false;    
-                                foreach( $allowedInternalSpoofing AS $whitelisted )
-                                    if( strpos( $senderServer->server, $whitelisted) )
-                                        $internal = true;
-
-                                $ewsItem->internal_impersonated = $internal;
-                                $ewsItem->spoof_detected = !$internal;   
-                            }
-                        }
-
-                    }
-
-                    
+                    // Process internal flags for spoofing and internal emails
+                    $ewsItem->extractSpoofAndInternalFlags();
 
                     $ewsItem->save();
 
