@@ -383,8 +383,11 @@ class ExchangeItem extends Model
         if( !isset($config['local_domains']) || !isset($config['main_domain']) )
             return;
 
-        $fromDomain = explode('@', $this->from)[1];
 
+        $fromDomain = '';
+        if( strpos($this->from, '@') !== false )
+            $fromDomain = explode('@', $this->from)[1];
+        
         if( $fromDomain == $config['main_domain'] && isset($config['external_mail_servers']) )
         {  
             $senderServer = $this->extractSenderServer(false);
