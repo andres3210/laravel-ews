@@ -45,6 +45,9 @@ class ExchangeSyncFolders extends Command
         $count = 0;
         foreach($folders AS $folder)
         {
+            // Refresh object as state might changed by an external process
+            $folder = ExchangeFolder::whereId($folder->id)->first();
+
             echo $folder->name . PHP_EOL;
             while( $folder->status != ExchangeFolder::STATUS_COMPLETE_SYNC )
             {
