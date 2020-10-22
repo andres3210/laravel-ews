@@ -11,7 +11,7 @@ class ExchangeFolder extends Model
 {
 
     const MODE_PROGRESSIVE = 'PROGRESSIVE';
-    
+
     const STATUS_PARTIAL_SYNC = 'PARTIAL_SYNC';
     const STATUS_SYNC_IN_PROGRESS = 'SYNC-IN-PROGRESS';
     const STATUS_COMPLETE_SYNC = 'COMPLETE_SYNC';
@@ -221,7 +221,7 @@ class ExchangeFolder extends Model
             {
                 if ((count($bufferIds) >= $limit || $index == ($itemsSize - 1)) && count($bufferIds) > 0) 
                 {
-                    echo 'Downloading ' . count($bufferIds) . PHP_EOL;
+                    echo 'Downloading ' . count($bufferIds) . '... ';
                     // Retrieve full body of all emails
                     $emails = $exchange->getEmailItem($bufferIds);
 

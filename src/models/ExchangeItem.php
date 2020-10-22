@@ -316,18 +316,21 @@ class ExchangeItem extends Model
                         $parts = explode($local_domain, $this->header->Received[$i]);
                         $sender = explode(' ', str_replace(['from ', ' by'], '', $parts[0]));
     
-                        $senderIP = str_replace(['(',')'], '', $sender[1]);
+                        if( count($sender) >= 2 )
+                        {
+                            $senderIP = str_replace(['(',')'], '', $sender[1]);
     
-                        $senderObj = (object)[
-                            'server'    => $sender[0],
-                            'domain'    => $emailDomain,
-                            'ip'        => $senderIP
-                        ];
-                        
-                        if( $validate_sfp )
-                            $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
-    
-                        return $senderObj;
+                            $senderObj = (object)[
+                                'server'    => $sender[0],
+                                'domain'    => $emailDomain,
+                                'ip'        => $senderIP
+                            ];
+                            
+                            if( $validate_sfp )
+                                $senderObj->spf = SPFValidate::isAllowed($senderIP, $emailDomain);
+        
+                            return $senderObj;
+                        }
                     }
                 }
                 // End loop each local_domain   
