@@ -419,7 +419,7 @@ class ExchangeItem extends Model
             {
                 // Validate if someone ilegit emails are spoofing email addressess
                 $senderServer = $this->extractSenderServer(true);
-                if( $senderServer->spf !== true )
+                if( isset($senderServer->spf) && $senderServer->spf !== true )
                 {
                     //echo 'External Email Spoof Detected' . PHP_EOL;
                     $this->spoof_detected = true;
