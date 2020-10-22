@@ -304,7 +304,9 @@ class ExchangeItem extends Model
 
         if( isset($this->header->Received) )
         {
-            $emailDomain = explode('@', $this->from)[1];
+            $emailDomain = '';
+            if( strpos($this->from, '@') !== false )
+                $emailDomain = explode('@', $this->from)[1];
 
             // look for first header containing email-domain.local
             for( $i = count($this->header->Received) - 1; $i >= 0; $i-- )
