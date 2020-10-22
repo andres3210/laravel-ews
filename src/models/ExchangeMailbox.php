@@ -55,11 +55,11 @@ class ExchangeMailbox extends Model
             'Schedule', 'Sharing', 'Shortcuts', 'System', 'TemporarySaves', 'Top of Information Store',
             'Conversation Action Settings', 'Deleted Items', 'Drafts', 'Journal', 'Junk Email',
             'Outbox', 'Working Set', 'Views', 'Favorites', 'My Contacts', 'MyContactsExtended', 'People I Know',
-            'Reminders', 'Spooler Queue', 'To-Do Search', 'Tasks', 'AllItems', 'RSS Feeds',
+            'Reminders', 'Spooler Queue', 'To-Do Search', 'Tasks', 'AllItems', 'RSS Feeds', 'Notes', 'MailboxMoveHistory'
         ];
 
         $partialTextExlcude = [
-            'MS-OLK-BGPooledSearchFolder', 'MailboxReplicationService', 'TaskActive%', '{'
+            'MS-OLK-BGPooledSearchFolder', 'MailboxReplicationService', 'TaskActive', '{'
         ];
 
         // - 1) Clean up folder items to avoid importing unnecessary data
@@ -69,7 +69,6 @@ class ExchangeMailbox extends Model
             $continue = false;
             if( in_array($folder->name, $exclude) )
                 $continue = true;
-
 
             foreach( $partialTextExlcude AS $search )
                 if( strpos($folder->name, $search ) === 0 )
