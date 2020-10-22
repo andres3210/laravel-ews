@@ -11,7 +11,9 @@ class ExchangeFolder extends Model
 {
 
     const MODE_PROGRESSIVE = 'PROGRESSIVE';
+    
     const STATUS_PARTIAL_SYNC = 'PARTIAL_SYNC';
+    const STATUS_SYNC_IN_PROGRESS = 'SYNC-IN-PROGRESS';
     const STATUS_COMPLETE_SYNC = 'COMPLETE_SYNC';
 
     protected $fillable = ['exchange_mailbox_id', 'item_id', 'parent_id', 'name'];
@@ -90,10 +92,10 @@ class ExchangeFolder extends Model
             default:
 
                 // Lock cron
-                if($this->status == 'sync-in-progress' )
+                if($this->status == self::STATUS_SYNC_IN_PROGRESS )
                     return;
 
-                $this->status = 'sync-in-progress';
+                $this->status = self::STATUS_SYNC_IN_PROGRESS;
 
                 $pagination = (object)[
                     'rowsPerPage'   => 1000,
@@ -244,7 +246,9 @@ class ExchangeFolder extends Model
                             'cc' => implode(',', $email->Cc),
                             'bcc' => implode(',', $email->Bcc),
                             'created_at' => $itemDate,
+                            'header'        => $email->Header,
                             'body' => $email->Body,
+                            'in_reply_to'   => $email->ConversationId,
                         ]);
 
                         // Only re-link items with empty ItemId
@@ -252,10 +256,15 @@ class ExchangeFolder extends Model
                             ->where('hash', '=', $newExchangeItem->getHash())
                             ->first();
 
-                        if (!$existingHash) {
+                        if (!$existingHash) 
+                        {
+                            // Process internal flags for spoofing and internal emails
+                            $newExchangeItem->extractSpoofAndInternalFlags();
                             $newExchangeItem->save();
                             $results['inserted']++;
-                        } else {
+                        } 
+                        else 
+                        {
                             // Attach new ItemID and location
                             $existingHash->item_id = $email->ItemId;
                             $existingHash->exchange_folder_id = $this->id;

@@ -35,6 +35,11 @@ class ExchangeSyncFolders extends Command
 
         $folders = ExchangeFolder::where('exchange_mailbox_id', '=', $mailbox->id)
             ->whereNotNull('item_id')
+            ->where(function($query){
+                $query->whereNull('status')
+                      ->orWhere('status', ExchangeFolder::STATUS_PARTIAL_SYNC);
+
+            })
             ->get();
 
         $count = 0;
@@ -46,8 +51,6 @@ class ExchangeSyncFolders extends Command
                 $res = $folder->syncExchange(ExchangeFolder::MODE_PROGRESSIVE);
                 echo 'Saved: ' . $res['inserted'] . ' Duplicate: ' . $res['existing'] . ' Re-link: ' . $res['re-linked'] . PHP_EOL;
             }
-            
-            exit();
 
             $count++;
         }
