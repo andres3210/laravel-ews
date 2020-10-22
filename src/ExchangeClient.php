@@ -174,7 +174,7 @@ class ExchangeClient extends Client {
     }
 
 
-    public function getFolderItems($folder = null, $search = [])
+    public function getFolderItems($folder = null, $search = [], $pagination = null)
     {
         if($folder == null)
             return [];
@@ -282,6 +282,17 @@ class ExchangeClient extends Client {
             $request->IndexedPageItemView->MaxEntriesReturned = $search['limit'];
         }
 
+        if( $pagination != null )
+        {
+            $request->IndexedPageItemView = new IndexedPageViewType();
+            $request->IndexedPageItemView->BasePoint = "Beginning"; 
+            $request->IndexedPageItemView->Offset = ($pagination->page > 0) ? $pagination->page * $pagination->rowsPerPage : 0;
+            $request->IndexedPageItemView->MaxEntriesReturnedSpecified = true;
+            $request->IndexedPageItemView->MaxEntriesReturned = $pagination->rowsPerPage;
+        }
+        
+    
+
         // sort order
         $order = new FieldOrderType();
         $order->Order = 'Descending';
@@ -310,8 +321,6 @@ class ExchangeClient extends Client {
                 throw( new Exception($response_message->ResponseCode . ' - ' . $response_message->MessageText));
             }
 
-
-
             // Iterate over the messages that were found, printing the subject for each.
             $items = $response_message->RootFolder->Items->Message;
             $emails = [];
@@ -324,6 +333,20 @@ class ExchangeClient extends Client {
                     'FromEmail' => (isset($item->From) && isset($item->From->Mailbox) && isset($item->From->Mailbox->EmailAddress) ) ? $item->From->Mailbox->EmailAddress : '',
                     'DisplayTo' => $item->DisplayTo,
                     'DateTimeReceived' => $item->DateTimeReceived
+                ];
+            }
+
+            if( $pagination != null )
+            {
+                // NumeratorOffset | TotalItemsInView | IndexedPagingOffset
+                return (object)[
+                    'items' => $emails,
+                    'pagination' => (object)[
+                        'totalPages'    => ceil($response_message->RootFolder->TotalItemsInView / $pagination->rowsPerPage),
+                        'rowsPerPage'   => $pagination->rowsPerPage,
+                        'page'          => $pagination->page,
+                        'totalItems'    => $response_message->RootFolder->TotalItemsInView
+                    ]
                 ];
             }
 

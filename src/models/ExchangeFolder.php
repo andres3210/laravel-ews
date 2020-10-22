@@ -12,6 +12,7 @@ class ExchangeFolder extends Model
 
     const MODE_PROGRESSIVE = 'PROGRESSIVE';
     const STATUS_PARTIAL_SYNC = 'PARTIAL_SYNC';
+    const STATUS_COMPLETE_SYNC = 'COMPLETE_SYNC';
 
     protected $fillable = ['exchange_mailbox_id', 'item_id', 'parent_id', 'name'];
 
@@ -86,50 +87,39 @@ class ExchangeFolder extends Model
         $search = [];
         switch($mode){
             case SELF::MODE_PROGRESSIVE:
+            default:
 
                 // Lock cron
                 if($this->status == 'sync-in-progress' )
                     return;
 
                 $this->status = 'sync-in-progress';
+
+                $pagination = (object)[
+                    'rowsPerPage'   => 1000,
+                    'page'          => 0,
+                ];
+
                 if( !isset($this->status_data) || $this->status_data == '' ){
                     $status_data = (object)([
-                        'syncMode'   => $mode,
-                        'needleDate' => new \DateTime('now')
+                        'pagination' => $pagination
                     ]);
                     $this->status_data = json_encode($status_data);
                 }
-                else{
+                else
+                {
                     $status_data = json_decode($this->status_data);
-                    $status_data->needleDate = new \DateTime($status_data->needleDate->date);
+                    if( isset($status_data->pagination) )
+                    {
+                        // jump to next page
+                        $pagination = $status_data->pagination;
+                        if( $pagination->page < $pagination->totalPages )
+                            $pagination->page++;
+                    }
+                        
                 }
+
                 $this->save();
-
-                $search['dateTo']   = $status_data->needleDate;
-                $search['limit']    = 1000;
-                break;
-
-            case 'last':
-            default:
-                $lastItem = ExchangeItem::where([
-                    'exchange_mailbox_id' => 4,
-                    'exchange_folder_id' => $this->id
-                ])->orderBy('created_at', 'ASC')->first();
-
-                $endDate = new \DateTime('now');
-                if( $lastItem )
-                    $endDate = $lastItem->created_at;
-
-                $startDate = new \DateTime( $endDate->format('Y-m-d H:i:s'));
-                $startDate->modify('- 1 month');
-
-                $search['dateFrom'] = $startDate;
-                $search['dateTo']   = $endDate;
-
-                $status_data = (object)([
-                    'syncMode'   => $mode,
-                    'needleDate' => new \DateTime('now')
-                ]);
                 break;
         }
 
@@ -147,9 +137,17 @@ class ExchangeFolder extends Model
                 $downloadBody = false;
         }
 
-        echo 'Search: '.print_r($search, 1);
+        //echo 'Search: '.print_r($search, 1);
+        echo 'Pagination: ' . $pagination->page . ( isset($pagination->totalPages) ? ' / ' . $pagination->totalPages : '' ) . PHP_EOL;
 
-        $items = $exchange->getFolderItems($this->item_id, $search);
+        $response = $exchange->getFolderItems($this->item_id, $search, $pagination);
+
+        $items = $response->items;
+
+        if( isset($response->pagination) )
+            $status_data->pagination = $response->pagination;
+
+        //print_r( $response ); exit();
 
         $results = [
             'listed'        => 0,
@@ -157,20 +155,21 @@ class ExchangeFolder extends Model
             'inserted'      => 0,
             'existing'      => 0,
             're-linked'     => 0,
-            'oldest'        => \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $status_data->needleDate->format('Y-m-d H:i:s'))
+            'oldest'        => \Carbon\Carbon::now()
         ];
 
-        if( count($items) == 0 && isset($search['dateFrom']) ){
+        /*if( count($items) == 0 && isset($search['dateFrom']) ){
             $results['oldest'] = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $search['dateFrom']->format('Y-m-d H:i:s'));
-        }
+        }*/
 
 
 
 
         $bufferIds = [];
-        $limit = 30;
+        $limit = 50;
         $itemsSize = count($items);
-        foreach($items AS $index => $item){
+        foreach($items AS $index => $item)
+        {
             $results['listed']++;
 
             //echo $item->ItemId . PHP_EOL;
@@ -216,9 +215,11 @@ class ExchangeFolder extends Model
                     $results['oldest'] = $tmpDate;
             }
 
-            if( $downloadBody ) {
-                if ((count($bufferIds) >= $limit || $index == ($itemsSize - 1)) && count($bufferIds) > 0) {
-
+            if( $downloadBody ) 
+            {
+                if ((count($bufferIds) >= $limit || $index == ($itemsSize - 1)) && count($bufferIds) > 0) 
+                {
+                    echo 'Downloading ' . count($bufferIds) . PHP_EOL;
                     // Retrieve full body of all emails
                     $emails = $exchange->getEmailItem($bufferIds);
 
@@ -305,8 +306,22 @@ class ExchangeFolder extends Model
             }
         }
 
-        if( $mode == self::MODE_PROGRESSIVE ){
-            $status_data->needleDate = new \DateTime( $results['oldest']->format('Y-m-d H:i:s'));
+
+        if( $mode == self::MODE_PROGRESSIVE )
+        {
+            // check if last page to mark sync as complete
+            if( 
+                isset($status_data->pagination) && isset($status_data->pagination->totalPages) && isset($status_data->pagination->page)  
+                && $status_data->pagination->page >= $status_data->pagination->totalPages
+            )
+            {
+                $this->status = self::STATUS_COMPLETE_SYNC;
+                //$this->status_data = null;
+                $this->save();
+                return $results;
+            }
+        
+            //$status_data->needleDate = new \DateTime( $results['oldest']->format('Y-m-d H:i:s'));
             $this->status_data = json_encode($status_data);
             $this->status = self::STATUS_PARTIAL_SYNC;
             $this->save();
