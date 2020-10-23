@@ -35,11 +35,7 @@ class ExchangeSyncFolders extends Command
 
         $folders = ExchangeFolder::where('exchange_mailbox_id', '=', $mailbox->id)
             ->whereNotNull('item_id')
-            ->where(function($query){
-                $query->whereNull('status')
-                      ->orWhere('status', ExchangeFolder::STATUS_PARTIAL_SYNC);
-
-            })
+            ->whereNull('status')
             ->get();
 
         $count = 0;
