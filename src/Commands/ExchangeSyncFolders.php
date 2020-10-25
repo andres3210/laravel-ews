@@ -45,7 +45,7 @@ class ExchangeSyncFolders extends Command
             $folder = ExchangeFolder::whereId($folder->id)->first();
 
             echo $folder->name . PHP_EOL;
-            while( $folder->status != ExchangeFolder::STATUS_COMPLETE_SYNC )
+            while( $folder->status != ExchangeFolder::STATUS_COMPLETE_SYNC && $folder->status != ExchangeFolder::STATUS_SYNC_IN_PROGRESS )
             {
                 $res = $folder->syncExchange(ExchangeFolder::MODE_PROGRESSIVE);
                 echo 'Saved: ' . $res['inserted'] . ' Duplicate: ' . $res['existing'] . ' Re-link: ' . $res['re-linked'] . PHP_EOL;
