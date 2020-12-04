@@ -158,6 +158,9 @@ class ExchangeClient extends Client {
         if($email == $this->impersonationEmail)
             return;
 
+        if( strtolower($email) == strtolower($this->username) )
+            return;
+
         $sid = new ConnectingSIDType();
         $sid->PrimarySmtpAddress = $email;
         $ei = new ExchangeImpersonationType();
