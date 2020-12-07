@@ -19,7 +19,7 @@ class ExchangeSyncFolders extends Command
      *
      * @var string
      */
-    protected $signature = 'exchange:sync-folders {mailbox}';
+    protected $signature = 'exchange:sync-folders {mailbox} {folder=null}';
 
     protected $description = 'Sync all folders from a mailbox';
 
@@ -33,10 +33,14 @@ class ExchangeSyncFolders extends Command
         $mailbox = ExchangeMailbox::where('email', '=', $this->argument('mailbox'))->firstOrFail();
 
 
-        $folders = ExchangeFolder::where('exchange_mailbox_id', '=', $mailbox->id)
+        $foldersQuery = ExchangeFolder::where('exchange_mailbox_id', '=', $mailbox->id)
             ->whereNotNull('item_id')
-            ->whereNull('status')
-            ->get();
+            ->whereNull('status');
+        
+        if( $this->argument('folder') != null )
+            $foldersQuery->where('name', $this->argument('folder'));
+            
+        $folders = $foldersQuery->get();
 
         $count = 0;
         foreach($folders AS $folder)
