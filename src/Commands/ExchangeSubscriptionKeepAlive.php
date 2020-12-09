@@ -69,12 +69,17 @@ class ExchangeSubscriptionKeepAlive extends Command
                 if( $res->getStatusCode() == 200)
                 {
                     $reSubscription = json_decode($res->getBody());
-                    if( $reSubscription && isset($reSubscription->subscription) && isset($reSubscription->subscription->id) )
+                    if( 
+                        $reSubscription 
+                        && isset($reSubscription->subscription) 
+                        && isset($reSubscription->subscription->inbox) 
+                        && isset($reSubscription->subscription->inbox->id) 
+                    )
                     {
                         // successfully re-subscribed
                         // delete old subscription
                         $subscription->delete();
-                        echo 'Re-Subscription Successful New #'. $reSubscription->subscription->id . PHP_EOL;
+                        echo 'Re-Subscription Successful New #'. $reSubscription->subscription->inbox->id . PHP_EOL;
                     }
                 }
             }

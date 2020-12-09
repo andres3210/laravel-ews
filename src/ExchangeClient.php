@@ -838,91 +838,93 @@ class ExchangeClient extends Client {
     }
 
 
-    public function subscribePushNotifications($callbackUri, $mailbox = null, $callbackFunction)
+    public function subscribePushNotifications($callbackUri, $mailbox = null, $callbackFunction, $sources = ['INBOX', 'SENT'])
     {
 
         //
         // -- Subscribe to all Incoming Items
         //
-        $request = new SubscribeType();
+        if( in_array('INBOX', $sources) ) 
+        {
+            $request = new SubscribeType();
 
-        $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
-        $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent', 'MovedEvent','CopiedEvent'];
-
-        // Set Subscription Type
-        $pushSubscription = new PushSubscriptionRequestType();
-        $pushSubscription->EventTypes = $eventTypes;
-        $pushSubscription->StatusFrequency = 1;
-        $pushSubscription->URL = $callbackUri;
-        $pushSubscription->SubscribeToAllFolders = true;
-        $request->PushSubscriptionRequest = $pushSubscription;
-
-        $response = $this->Subscribe($request);
-
-        if( isset($response->ResponseMessages->SubscribeResponseMessage) ){
-            $subscription = $response->ResponseMessages->SubscribeResponseMessage[0];
-            if( $subscription->ResponseClass == 'Success'){
-
-                // Register Subscription
-                $laraewsSubscriptionInbox = ExchangeSubscription::create([
-                    'item_id'               => $subscription->SubscriptionId,
-                    'expire_on'             => null,
-                    'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
-                    'keep_alive'            => 120,
-                    'rules'                 => [],
-                    'callback'              => $callbackFunction 
-                ]);
+            $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
+            $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent', 'MovedEvent','CopiedEvent'];
+    
+            // Set Subscription Type
+            $pushSubscription = new PushSubscriptionRequestType();
+            $pushSubscription->EventTypes = $eventTypes;
+            $pushSubscription->StatusFrequency = 1;
+            $pushSubscription->URL = $callbackUri;
+            $pushSubscription->SubscribeToAllFolders = true;
+            $request->PushSubscriptionRequest = $pushSubscription;
+    
+            $response = $this->Subscribe($request);
+    
+            if( isset($response->ResponseMessages->SubscribeResponseMessage) ){
+                $subscription = $response->ResponseMessages->SubscribeResponseMessage[0];
+                if( $subscription->ResponseClass == 'Success'){
+    
+                    // Register Subscription
+                    $laraewsSubscriptionInbox = ExchangeSubscription::create([
+                        'item_id'               => $subscription->SubscriptionId,
+                        'expire_on'             => null,
+                        'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
+                        'keep_alive'            => 120,
+                        'rules'                 => [],
+                        'callback'              => $callbackFunction 
+                    ]);
+                }
             }
-        }
+        } 
+        
 
 
         //
         // -- Subscribe to all Sent Items
         //
-        $request = new SubscribeType();
+        if( in_array('SENT', $sources) ) 
+        {
+            $request = new SubscribeType();
 
-        $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
-        $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent', 'MovedEvent', 'CopiedEvent'];
-
-        // Get Main Folder ID
-        $folder_id = new NonEmptyArrayOfBaseFolderIdsType();
-        $folder_id->DistinguishedFolderId = new DistinguishedFolderIdType();
-        $folder_id->DistinguishedFolderId->Id = DistinguishedFolderIdNameType::SENT;
-
-        // Set Subscription Type
-        $pushSubscription = new PushSubscriptionRequestType();
-        $pushSubscription->EventTypes = $eventTypes;
-        $pushSubscription->StatusFrequency = 1;
-        $pushSubscription->URL = $callbackUri;
-        $pushSubscription->FolderIds = $folder_id;
-        $request->PushSubscriptionRequest = $pushSubscription;
-
-        $response = $this->Subscribe($request);
-
-        if( isset($response->ResponseMessages->SubscribeResponseMessage) ){
-            $subscription = $response->ResponseMessages->SubscribeResponseMessage[0];
-            if( $subscription->ResponseClass == 'Success'){
-
-                // Register Subscription
-                $laraewsSubscriptionSent = ExchangeSubscription::create([
-                    'item_id'               => $subscription->SubscriptionId,
-                    'expire_on'             => null,
-                    'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
-                    'keep_alive'            => 120,
-                    'rules'                 => [],
-                    'callback'              => $callbackFunction 
-                ]);
+            $eventTypes = new NonEmptyArrayOfNotificationEventTypesType();
+            $eventTypes->EventType = ['CreatedEvent', 'NewMailEvent', 'MovedEvent', 'CopiedEvent'];
+    
+            // Get Main Folder ID
+            $folder_id = new NonEmptyArrayOfBaseFolderIdsType();
+            $folder_id->DistinguishedFolderId = new DistinguishedFolderIdType();
+            $folder_id->DistinguishedFolderId->Id = DistinguishedFolderIdNameType::SENT;
+    
+            // Set Subscription Type
+            $pushSubscription = new PushSubscriptionRequestType();
+            $pushSubscription->EventTypes = $eventTypes;
+            $pushSubscription->StatusFrequency = 1;
+            $pushSubscription->URL = $callbackUri;
+            $pushSubscription->FolderIds = $folder_id;
+            $request->PushSubscriptionRequest = $pushSubscription;
+    
+            $response = $this->Subscribe($request);
+    
+            if( isset($response->ResponseMessages->SubscribeResponseMessage) ){
+                $subscription = $response->ResponseMessages->SubscribeResponseMessage[0];
+                if( $subscription->ResponseClass == 'Success'){
+    
+                    // Register Subscription
+                    $laraewsSubscriptionSent = ExchangeSubscription::create([
+                        'item_id'               => $subscription->SubscriptionId,
+                        'expire_on'             => null,
+                        'exchange_mailbox_id'   => $mailbox ? $mailbox->id : null,
+                        'keep_alive'            => 120,
+                        'rules'                 => [],
+                        'callback'              => $callbackFunction 
+                    ]);
+                }
             }
         }
-
+        
         return [
             'inbox' => isset($laraewsSubscriptionInbox) ? $laraewsSubscriptionInbox : null,
             'sent'  => isset($laraewsSubscriptionSent) ? $laraewsSubscriptionSent : null
-        ];
-
-        $subscriptionResponse = $response->ResponseMessages->SubscribeResponseMessage[0];
-        return [
-            'error' => $subscriptionResponse->ResponseClass . '::' . $subscriptionResponse->MessageText
         ];
     }
 
