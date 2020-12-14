@@ -860,7 +860,9 @@ class ExchangeClient extends Client {
             $pushSubscription->StatusFrequency = 1;
             $pushSubscription->URL = $callbackUri;
             $pushSubscription->SubscribeToAllFolders = true;
-            $pushSubscription->expirationDateTime = $expiration->format("Y-m-d\TH:i:s.0000000\Z"); 
+            // seems to work only on REST API
+            //$pushSubscription->ExpirationDateTime = $expiration->format("Y-m-d\TH:i:s.0000000\Z"); 
+            $pushSubscription->Timeout = 24 * 60 * 2;
             $request->PushSubscriptionRequest = $pushSubscription;
     
             $response = $this->Subscribe($request);
