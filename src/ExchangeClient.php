@@ -841,6 +841,9 @@ class ExchangeClient extends Client {
     public function subscribePushNotifications($callbackUri, $mailbox = null, $callbackFunction, $sources = ['INBOX', 'SENT'])
     {
 
+        $expiration = \Carbon\Carbon::now();
+        $expiration->modify("+2 days");
+
         //
         // -- Subscribe to all Incoming Items
         //
@@ -857,6 +860,7 @@ class ExchangeClient extends Client {
             $pushSubscription->StatusFrequency = 1;
             $pushSubscription->URL = $callbackUri;
             $pushSubscription->SubscribeToAllFolders = true;
+            $pushSubscription->expirationDateTime = $expiration->format("Y-m-d\TH:i:s.0000000\Z"); 
             $request->PushSubscriptionRequest = $pushSubscription;
     
             $response = $this->Subscribe($request);
