@@ -19,7 +19,7 @@ class ExchangeSyncFolders extends Command
      *
      * @var string
      */
-    protected $signature = 'exchange:sync-folders {mailbox} {folder=null}';
+    protected $signature = 'exchange:sync-folders {mailbox} {folder=null} {force_resync=false}';
 
     protected $description = 'Sync all folders from a mailbox';
 
@@ -47,6 +47,14 @@ class ExchangeSyncFolders extends Command
         {
             // Refresh object as state might changed by an external process
             $folder = ExchangeFolder::whereId($folder->id)->first();
+
+            // Only restart the process if instructed
+            if( $folder->status == 'COMPLETE_SYNC' && $this->argument('force_resync') )
+            {
+                $folder->status = null;
+                $folder->status_data = null;
+                $folder->save();
+            }
 
             echo $folder->name . PHP_EOL;
             while( $folder->status != ExchangeFolder::STATUS_COMPLETE_SYNC && $folder->status != ExchangeFolder::STATUS_SYNC_IN_PROGRESS )
