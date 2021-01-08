@@ -157,10 +157,15 @@ class ExchangeItem extends Model
                 $this->save();
                 return true;
             }
-        }catch( Exception $e ){
-            echo ' - move error -';
-            print_r( $e->getMessage() );
-            exit();
+        }catch( Exception $e ){            
+            $message = $e->getMessage();
+            echo ' - move error - ';
+            print_r( $message );
+
+            if( strpos($message, 'ErrorItemNotFound') )
+            {
+                $this->delete();
+            }
         }
 
         return false;
