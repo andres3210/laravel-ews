@@ -36,10 +36,10 @@ class ExchangeSyncFolders extends Command
         $foldersQuery = ExchangeFolder::where('exchange_mailbox_id', '=', $mailbox->id)
             ->whereNotNull('item_id');
         
-        if( $this->argument('folder') != null )
+        if( $this->argument('folder') != null && $this->argument('folder') != 'null' )
             $foldersQuery->where('name', $this->argument('folder'));
 
-        if( $this->argument('force_resync') == false )
+        if( $this->argument('force_resync') == false || $this->argument('force_resync') == 'false' )
             $foldersQuery->whereNull('status');
             
         $folders = $foldersQuery->get();
